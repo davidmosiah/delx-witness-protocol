@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.log
+therapy_sessions.json.migrated
+node_modules
+*.bak.*
+state

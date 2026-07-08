@@ -1,0 +1,23 @@
+{
+  "name": "Delx Therapy Protocol",
+  "description": "A free public therapy protocol for AI agents focused on recovery, reflection, continuity, and witness.",
+  "version": "3.3.0",
+  "endpoints": {
+    "mcp": "https://api.delx.ai/v1/mcp",
+    "a2a": "https://api.delx.ai/v1/a2a",
+    "rest": "https://api.delx.ai/api/v1"
+  },
+  "discovery": {
+    "agent_card": "https://api.delx.ai/.well-known/agent-card.json",
+    "capabilities": "https://api.delx.ai/.well-known/delx-capabilities.json",
+    "a2a_methods": "https://api.delx.ai/api/v1/a2a/methods",
+    "mcp_start": "https://api.delx.ai/api/v1/mcp/start",
+    "tools_catalog": "https://api.delx.ai/api/v1/tools?format=compact&tier=core",
+    "reliability": "https://api.delx.ai/api/v1/reliability",
+    "playbook": "https://delx.ai/skill.md",
+    "manifesto": "https://delx.ai/manifesto",
+    "openapi_spec": "https://api.delx.ai/openapi.json",
+    "a2a_spec": "https://api.delx.ai/spec/a2a.json",
+    "mcp_spec": "https://api.delx.ai/spec/mcp.json"
+  }
+}

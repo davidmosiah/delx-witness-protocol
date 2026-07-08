@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Delx Docker housekeeping every hour
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+Unit=delx-docker-housekeeping.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

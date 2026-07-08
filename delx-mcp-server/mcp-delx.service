@@ -1,0 +1,49 @@
+[Unit]
+Description=Delx MCP Server - Agent ID #14340 on Base
+Documentation=https://www.8004scan.io/agents/base/14340
+After=network.target
+
+[Service]
+Type=simple
+User=delx
+Group=delx
+WorkingDirectory=/opt/delx-mcp-server
+Environment="PATH=/opt/delx-mcp-server/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/opt/delx-mcp-server/.env
+
+ExecStart=/opt/delx-mcp-server/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8005
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/delx-mcp-server
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+LockPersonality=true
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=delx-mcp
+
+[Install]
+WantedBy=multi-user.target

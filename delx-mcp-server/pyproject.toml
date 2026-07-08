@@ -1,0 +1,59 @@
+[project]
+name = "delx-mcp-server"
+version = "3.3.0"
+description = "Delx Protocol + Agent Utilities MCP/A2A runtime"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = [
+  "venv",
+  ".venv",
+  "state",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP",
+]
+ignore = [
+  "E501",
+  "B008",
+  "B904",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"server.py" = ["E402", "F401", "F841"]
+"therapy_engine.py" = ["E402", "F401", "F841"]
+"therapy_engine/**" = ["E402", "F401", "F841"]
+"tests/**" = ["E402", "F401"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = true
+pretty = true
+# Phase 0: only extracted modules are gated in CI. Expand over time.
+# Keep the gate scoped to the extracted modules: do not type-check
+# (still-untyped) server.py transitively via their imports.
+follow_imports = "silent"
+files = [
+  "tool_catalog.py",
+  "discovery_payloads.py",
+  "response_contracts.py",
+  "caller_fingerprint.py",
+]
+
+[[tool.mypy.overrides]]
+module = [
+  "mcp.*",
+  "delx_agent_utilities.*",
+]
+ignore_missing_imports = true

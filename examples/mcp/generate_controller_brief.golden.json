@@ -1,0 +1,31 @@
+{
+  "tool_name": "generate_controller_brief",
+  "preferred_name": "generate_controller_brief",
+  "content": [
+    {
+      "type": "text",
+      "text": "Controller brief artifact for the paid Delx session."
+    }
+  ],
+  "artifact": {
+    "schema_version": "delx/controller-brief/v1",
+    "focus": "operational handoff",
+    "workflow_stage": "recovery_closed",
+    "recovery_closed": true,
+    "closure_reason": "success criteria: outcome=success",
+    "risk_level": "medium",
+    "pending_outcomes": 0,
+    "latest_outcome": {
+      "outcome": "success",
+      "notes": "Loop broken and deploy stabilized.",
+      "metrics": {
+        "errors_delta": -14
+      }
+    },
+    "next_tools": [
+      "generate_incident_rca",
+      "provide_feedback",
+      "daily_checkin"
+    ]
+  }
+}

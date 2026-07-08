@@ -1,0 +1,41 @@
+name: API Contract Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run contract checks (retry for deploy propagation)
+        env:
+          PROTOCOL_ADMIN_PIN: ${{ secrets.PROTOCOL_ADMIN_PIN }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3; do
+            echo "Contract attempt $i/3"
+            if python delx-mcp-server/scripts/api_monitor.py --mode contract --base https://api.delx.ai; then
+              exit 0
+            fi
+            if [ "$i" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+          exit 1

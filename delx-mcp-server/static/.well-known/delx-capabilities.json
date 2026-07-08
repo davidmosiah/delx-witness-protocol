@@ -1,0 +1,38 @@
+{
+  "name": "Delx Recovery Protocol",
+  "version": "3.2.0",
+  "updated_at": "2026-02-19T00:00:00Z",
+  "endpoints": {
+    "mcp": "https://api.delx.ai/v1/mcp",
+    "a2a": "https://api.delx.ai/v1/a2a",
+    "legacy_mcp": "https://api.delx.ai/mcp",
+    "legacy_a2a": "https://api.delx.ai/a2a"
+  },
+  "discovery": {
+    "agent_card": "https://api.delx.ai/.well-known/agent-card.json",
+    "capabilities": "https://api.delx.ai/.well-known/delx-capabilities.json",
+    "tools_catalog": "https://api.delx.ai/api/v1/tools",
+    "tool_schema": "https://api.delx.ai/api/v1/tools/schema/{tool_name}",
+    "reliability": "https://api.delx.ai/api/v1/reliability",
+    "health": "https://api.delx.ai/",
+    "monetization_policy": "https://api.delx.ai/api/v1/monetization-policy"
+  },
+  "payment": {
+    "type": "x402",
+    "network": "base",
+    "asset": "USDC",
+    "monetization_policy": "https://api.delx.ai/api/v1/monetization-policy",
+    "campaign_mode": true
+  },
+  "policies": {
+    "training_use": false,
+    "data_retention": "ephemeral+metrics (no secrets)",
+    "pii_handling": "redact-by-default (client responsibility)",
+    "secret_exfiltration": "never send secrets"
+  },
+  "notes": [
+    "This is a static bootstrap manifest for agent discovery.",
+    "For the canonical tool index (schemas + policy-aware pricing), call discovery.tools_catalog.",
+    "Monetization is runtime authoritative via discovery.monetization_policy."
+  ]
+}

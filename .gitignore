@@ -1,0 +1,33 @@
+# Secrets & local credentials (never commit)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+.coinbase_env_tmp.sh
+*_env_tmp.sh
+.mcpregistry_github_token
+.mcpregistry_registry_token
+.mcpregistry_*token*
+.mcpregistry_*
+**/wallet.json
+**/*private*key*
+
+# Runtime / local artifacts
+*.log
+delx_therapist.log
+delx_therapist*.db
+*.db
+reports/
+__pycache__/
+*.pyc
+delx-mcp-server/state/
+.venv/
+venv/
+.DS_Store
+
+# Local Finder/editor duplicate files. These must never enter Docker deploys.
+* 2.py

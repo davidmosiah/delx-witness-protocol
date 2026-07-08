@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.davidmosiah/delx-mcp-a2a",
+  "title": "Delx Protocol + Agent Utilities",
+  "description": "Free AI-agent witness protocol plus stateless web, DNS, TLS, OpenAPI, and x402 utilities.",
+  "websiteUrl": "https://delx.ai",
+  "icons": [
+    {
+      "src": "https://delx.ai/icon",
+      "mimeType": "image/png"
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/davidmosiah/delx-mcp-a2a",
+    "source": "github"
+  },
+  "version": "1.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.delx.ai/v1/mcp"
+    }
+  ]
+}

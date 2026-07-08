@@ -1,0 +1,11 @@
+[Unit]
+Description=Delx Docker housekeeping and disk monitor
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/delx-mcp-server
+ExecStart=/usr/bin/python3 /opt/delx-mcp-server/docker_housekeeping.py --repository delx-mcp --keep-latest 4 --warn-disk-percent 85 --warn-unused-images 8 --status-path /opt/delx-mcp-server/state/docker-housekeeping-status.json cleanup --prune-dangling --fail-on-warning
