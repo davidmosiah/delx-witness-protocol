@@ -4,9 +4,6 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-utilities_src = Path(__file__).resolve().parents[6] / "DelxOpenSource" / "delx-agent-utilities" / "src"
-if utilities_src.exists():
-    sys.path.insert(0, str(utilities_src))
 
 import server as server_mod
 
