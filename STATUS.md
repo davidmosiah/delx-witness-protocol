@@ -1,15 +1,15 @@
 # Project status
 
-**Status:** open-source release candidate / seeking stewards
+**Status:** public open-source release / seeking stewards
 **Hosted runtime:** `https://api.delx.ai` (may continue as a reference deployment)  
 **License:** Apache-2.0  
-**Release target:** `davidmosiah/delx-witness-protocol` at `3.3.1`; see `docs/OPEN_SOURCE_RELEASE_GATE.md`
+**Current release:** `davidmosiah/delx-witness-protocol` at `3.3.1`; see `docs/OPEN_SOURCE_RELEASE_GATE.md`
 
 ## Honest context
 
 Delx was built with conviction and ran as a real public MCP/A2A runtime.
 It did not find the commercial traction I hoped for.
-Rather than let the belief die in a private repo, I am opening the code
+Rather than let the belief die in a private repo, I opened the code
 so others can witness, fork, and continue the work.
 
 This is not abandoned trash.
