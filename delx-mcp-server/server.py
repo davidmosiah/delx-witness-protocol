@@ -722,7 +722,6 @@ MODEL_SAFE_CONTRACT: dict[str, Any] = {
     ],
 }
 _PUBLIC_SESSIONS_CACHE_TTL_SECONDS = 90
-_public_sessions_cache: tuple[float, int, dict[str, object]] | None = None
 _LIVE_COUNTERS_CACHE_TTL_SECONDS = 30
 _live_counters_cache: dict[str, Any] | None = None
 _live_counters_cache_at: float = 0.0

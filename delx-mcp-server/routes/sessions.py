@@ -5,7 +5,9 @@ import json
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
+
+_public_sessions_cache: tuple[float, int, dict[str, object]] | None = None
 
 def _server():
     import server as server_mod
@@ -641,5 +643,3 @@ async def wellness_score_rest(request: Request) -> JSONResponse:
         _server().logger.exception("wellness_score calculation failed")
         return JSONResponse({"error": "wellness calculation failed"}, status_code=503, headers=_cors())
     return JSONResponse({"session_id": session_id, "wellness_score": score}, headers=_cors())
-
-

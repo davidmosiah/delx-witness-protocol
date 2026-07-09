@@ -3,9 +3,13 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from starlette.testclient import TestClient
+
+import server as server_mod
 from therapy_engine import TherapyEngine
 
 
@@ -59,7 +63,21 @@ class _FakeStore:
         raise AssertionError("get_public_session_cards should not depend on get_admin_overview")
 
 
+class _EmptyPublicSessionsEngine:
+    async def get_public_session_cards(self, limit: int = 12):
+        return []
+
+
 class PublicSessionsContractTests(unittest.TestCase):
+    def test_public_sessions_http_route_starts_with_empty_cache(self):
+        client = TestClient(server_mod._starlette_app, raise_server_exceptions=False)
+
+        with patch.object(server_mod, "engine", _EmptyPublicSessionsEngine()):
+            response = client.get("/api/v1/public-sessions?limit=1")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json(), {"items": [], "cached": False})
+
     def test_public_session_cards_use_lightweight_store_path(self):
         engine = TherapyEngine(_FakeStore(), None)
         items = asyncio.run(engine.get_public_session_cards(limit=2))
