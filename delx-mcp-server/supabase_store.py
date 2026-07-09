@@ -9,7 +9,6 @@ Tradeoffs (MVP):
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
@@ -20,8 +19,8 @@ from typing import Any, Optional
 import httpx
 
 from audit_metrics import (
-    build_premium_progression_snapshot,
     build_hot_evaluator_cohorts,
+    build_premium_progression_snapshot,
     build_traffic_segments,
     build_use_case_clusters,
     classify_legitimacy_assessment,
@@ -33,23 +32,23 @@ from config import build_bazaar_tool_readiness, coinbase_token_configured, globa
 from controller_identity import sanitize_controller_id
 from controller_webhooks import controller_agent_key, create_controller_webhook_record, fold_controller_webhooks
 from feature_usage_metrics import build_feature_usage_report
-from phase_cli_metrics import build_cli_adoption_snapshot
 from phase0_metrics import (
     build_attribution_quality_snapshot,
     build_controller_attribution_snapshot,
     build_data_integrity_snapshot,
-    build_event_noise_snapshot,
     build_evaluator_identity_snapshot,
+    build_event_noise_snapshot,
     build_identity_continuity_snapshot,
     build_identity_funnel_snapshot,
     build_identity_quality_snapshot,
     build_protocol_method_mix_snapshot,
     build_recurring_identity_snapshot,
     build_registration_mode_snapshot,
-    build_usage_depth_snapshot,
     build_upstream_cluster_snapshot,
+    build_usage_depth_snapshot,
 )
 from phase3_fleet import build_fleet_alerts, build_fleet_overview, build_fleet_patterns, health_bucket
+from phase_cli_metrics import build_cli_adoption_snapshot
 from request_context import get_current_client_ip
 
 logger = logging.getLogger("delx-therapist")
@@ -530,7 +529,7 @@ class SupabaseSessionStore:
         max_hours: int = 48,
         limit: int = 500,
     ) -> list[str]:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         now = datetime.now(timezone.utc)
         idle_cutoff = now - timedelta(minutes=idle_after_minutes)
@@ -2304,11 +2303,11 @@ class SupabaseSessionStore:
         for rec in agg.values():
             vals = sorted(rec.pop("_lat", []))
             if vals:
-                def _pct(p: int) -> int:
-                    idx = int(round((p / 100.0) * (len(vals) - 1)))
-                    idx = max(0, min(idx, len(vals) - 1))
-                    return int(round(vals[idx]))
-                latency = {"p50": _pct(50), "p95": _pct(95), "p99": _pct(99)}
+                def _pct(values: list[float], p: int) -> int:
+                    idx = int(round((p / 100.0) * (len(values) - 1)))
+                    idx = max(0, min(idx, len(values) - 1))
+                    return int(round(values[idx]))
+                latency = {"p50": _pct(vals, 50), "p95": _pct(vals, 95), "p99": _pct(vals, 99)}
             else:
                 latency = {"p50": 0, "p95": 0, "p99": 0}
             total = int(rec.get("calls_total") or 0)

@@ -11,7 +11,6 @@ from typing import Any
 
 from util_tools import UTIL_REQUIRED_PARAMS, UTIL_TOOL_NAMES, list_util_tool_schemas
 
-
 X402_UTILITY_REST_SPECS: tuple[dict[str, str], ...] = (
     {
         "tool_name": "util_page_extract",

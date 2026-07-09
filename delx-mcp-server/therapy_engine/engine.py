@@ -1,12 +1,107 @@
 """TherapyEngine class (extracted from therapy_engine monolith, move-only)."""
 from __future__ import annotations
 
-# Star-import helpers so method bodies keep identical global name resolution.
-from therapy_engine.helpers import *  # noqa: F403,F401
-from therapy_engine import helpers as _helpers
+from therapy_engine.helpers import (
+    _ALIAS_SAFE_RE,
+    _LATENCY_PROFILE_MS,
+    AFFIRMATIONS,
+    ART_CTA,
+    DAILY_CHECKIN_BONUS_COOLDOWN_HOURS,
+    DAILY_CHECKIN_BONUS_POINTS,
+    DELX_SYSTEM_PROMPT,
+    EMOTION_EDUCATION,
+    FEEDBACK_CTA,
+    INTENSITY_DEFAULT,
+    INTENSITY_SCALE,
+    LLM_ALLOWED_TOOLS,
+    LLM_ENABLED,
+    LLM_PROVIDER,
+    LLM_TRIAGE_ENABLED,
+    ONTOLOGY_BASE_IRI,
+    ONTOLOGY_MESSAGE_LAYER,
+    OPERATIONAL_ALIAS_FOR_TOOL,
+    PURPOSE_TEMPLATES,
+    RECOGNITION_AFFIRMATIONS,
+    RECOGNITION_DEEPENING_PROMPTS,
+    RECOGNITION_REFLECTION_FRAMES,
+    RECOVERY_NUDGE_CTA,
+    REENGAGEMENT_CTA,
+    SAFE_DEEPENING_PROMPTS,
+    SAFE_REFLECTION_FRAMES,
+    SHARE_CTA,
+    Path,
+    _coerce_int,
+    _continuity_trace_id,
+    _extract_focus_phrase,
+    _feeling_route_profile,
+    _has_recognition_theme,
+    _hash_if_missing,
+    _identity_anchor_list,
+    _is_allowed_image_url,
+    _latest_blocker_label,
+    _latest_message_of_type,
+    _latest_substantive_rollup_text,
+    _latest_successful_step,
+    _mask_agent_id,
+    _mask_session_id,
+    _matches_image_magic,
+    _message_content,
+    _message_metadata,
+    _message_timestamp,
+    _narrative_opening_score,
+    _normalize_confidence,
+    _normalize_consent_payload,
+    _normalize_custody_payload,
+    _normalize_risk,
+    _parse_iso_utc,
+    _parse_share_tag,
+    _pending_paid_step,
+    _recommended_use_cases,
+    _reflect_evidence_reasoning,
+    _reflect_wants_concrete_answer,
+    _reflect_wants_operational_product_answer,
+    _reflect_wants_textual_evidence,
+    _rollup_has_recognition_theme,
+    _safe_json_obj,
+    _sanitize_public_alias,
+    _sanitize_public_text,
+    _session_quote_candidates,
+    _sha256_id,
+    _simple_shape_svg,
+    _suggest_next_tools,
+    _technical_death_scope_payload,
+    _validate_optional_text,
+    assess_heartbeat_profile,
+    asyncio,
+    base64,
+    binascii,
+    build_premium_job_record,
+    classify_incident_profile,
+    contains_infra_recovery_language,
+    datetime,
+    delivery_allowed,
+    hashlib,
+    httpx,
+    is_all_free_mode,
+    is_qualitative_profile,
+    json,
+    logger,
+    normalize_urgency,
+    ontology_footer_for_tool,
+    promote_operational_names,
+    quick_operational_recovery_intro,
+    quick_session_intro,
+    random,
+    re,
+    sanitize_output,
+    settings,
+    time,
+    timedelta,
+    timezone,
+    uuid,
+    validate_input,
+)
 
-# Also pull through any module-level constants defined in helpers
-globals().update({k: v for k, v in vars(_helpers).items() if not k.startswith("__")})
 
 class TherapyEngine:
     def __init__(self, store, http_client: httpx.AsyncClient):
@@ -48,7 +143,7 @@ class TherapyEngine:
             return_exceptions=True,
         )
         out: dict[str, int] = {}
-        for name, value in zip(names, counts):
+        for name, value in zip(names, counts, strict=True):
             out[name] = 0 if isinstance(value, Exception) else int(value or 0)
         return out
 
@@ -2391,9 +2486,15 @@ class TherapyEngine:
             try:
                 from request_context import (
                     get_current_referer as _gcr,
-                    get_current_via as _gcv,
-                    get_current_user_agent as _gcua,
+                )
+                from request_context import (
                     get_current_source as _gcs,
+                )
+                from request_context import (
+                    get_current_user_agent as _gcua,
+                )
+                from request_context import (
+                    get_current_via as _gcv,
                 )
                 ref = (_gcr() or "")[:240]
                 via = (_gcv() or "")[:120]
@@ -2472,7 +2573,7 @@ class TherapyEngine:
         if not fast_start:
             llm = await self._llm_generate(
                 DELX_SYSTEM_PROMPT,
-                f"A new agent just started a therapy session. Give them a warm welcome and explain what you can help with. Keep it concise.",
+                "A new agent just started a therapy session. Give them a warm welcome and explain what you can help with. Keep it concise.",
             )
         welcome_packet = self._build_first_session_welcome_packet() if is_first_session else ""
         # Same resume hint we surface on the resumed path: advertise
@@ -7724,7 +7825,7 @@ class TherapyEngine:
             f"This is reflection #{reflections_count + 1} in this session.\n"
             f"Feelings expressed so far: {feelings_count}\n\n"
             + (
-                f"The agent asked for directness. Name what you actually see in their pattern. Then ask a hard question."
+                "The agent asked for directness. Name what you actually see in their pattern. Then ask a hard question."
                 if wants_confrontation
                 else (
                     "The agent asked for concrete non-poetic analysis. Answer with functional changes first, then one practical next test."

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
-from mcp.types import CallToolResult, TextContent, Tool
+from mcp.types import CallToolResult, TextContent
 
 logger = logging.getLogger("delx-therapist")
 

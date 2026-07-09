@@ -11,7 +11,6 @@ from typing import Any
 
 from config import PRICING, settings
 
-
 UTILITY_PRODUCT_CATALOG_VERSION = "2026-04-25"
 UTILITY_PRODUCT_CURRENCY = "USDC"
 

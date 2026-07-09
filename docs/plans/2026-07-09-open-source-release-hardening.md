@@ -4,7 +4,7 @@
 
 **Goal:** Make the clean Delx snapshot safe, reproducible, honest, and useful before creating a new public GitHub repository.
 
-**Architecture:** Keep `/Users/davidmosiah/Developer/03-delx-platform/delx-mcp-a2a` unchanged as the private operational source and harden only this history-free OSS snapshot. Make CI hermetic, keep production checks explicitly manual, align every public manifest and document with runtime `3.3.0`, and prove the final tree from a fresh local clone.
+**Architecture:** Keep the existing operational repository private and unchanged, and harden only this history-free snapshot for the new `davidmosiah/delx-witness-protocol` repository. Make CI hermetic, keep production checks explicitly manual, advance every public manifest and document from the already-published `3.3.0` to `3.3.1`, and prove the final tree from a fresh local clone.
 
 **Tech Stack:** Python 3.12+, Starlette/FastAPI, unittest, Ruff, Mypy, GitHub Actions, Gitleaks, OSV Scanner.
 
@@ -65,7 +65,7 @@
 - Create: `SECURITY.md`
 
 **Steps:**
-1. Set registry/runtime public versions consistently to `3.3.0`.
+1. Set registry/runtime public versions consistently to `3.3.1` because `3.3.0` is already published in the official MCP Registry.
 2. Replace all instructions that rewrite or publish the private operational repo with new-repository-only instructions.
 3. Replace false claims about MIT licensing, tenant isolation, read-only behavior, authentication, and external calls.
 4. Add a root GitHub-discoverable security policy with the actual trust boundaries and reporting address.

@@ -7,8 +7,8 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from therapy_engine import TherapyEngine
 from premium_jobs import build_premium_job_record, hash_premium_artifact
+from therapy_engine import TherapyEngine
 
 
 class PremiumJobHelpersTests(unittest.TestCase):

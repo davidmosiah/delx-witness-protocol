@@ -11,7 +11,6 @@ from typing import Any
 from config import PRICING, enabled_x402_providers, get_tool_pricing_payload, settings
 from utility_product_catalog import utility_charge_candidate_tools_v1
 
-
 DEFAULT_UTILITY_CHARGE_TOOLS = utility_charge_candidate_tools_v1()
 
 

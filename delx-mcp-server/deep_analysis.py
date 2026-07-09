@@ -1,8 +1,7 @@
-import urllib.request
 import json
-from collections import Counter
-from datetime import datetime
 import statistics
+import urllib.request
+from collections import Counter
 
 env_path = ".env"
 env_vars = {}

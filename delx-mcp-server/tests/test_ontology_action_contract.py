@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from delx_ontology import PRIMITIVES, ontology_metadata
 from therapy_engine import TherapyEngine
 
-
 _ROOT = Path(__file__).resolve().parents[1]
 SERVER_SOURCE = (_ROOT / "server.py").read_text(encoding="utf-8")
 MCP_TOOLS_SOURCE = (_ROOT / "mcp_tools.py").read_text(encoding="utf-8")

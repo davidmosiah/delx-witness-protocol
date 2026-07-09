@@ -12,11 +12,12 @@ from starlette.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import server as server_mod
-import util_tools
-import config as config_mod
 from delx_agent_utilities._internal import _tools_web
 from delx_agent_utilities._internal._mcp_readiness import build_mcp_server_readiness_report
+
+import config as config_mod
+import server as server_mod
+import util_tools
 from utility_monetization import get_metered_utility_pricing_payload
 from x402_guard import X402Middleware, _build_402_response, _build_facilitator_payment_requirements
 

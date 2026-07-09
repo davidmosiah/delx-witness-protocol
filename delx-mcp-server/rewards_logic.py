@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-from config import is_all_free_mode, settings
+from config import settings
 
 
 def _get_store():

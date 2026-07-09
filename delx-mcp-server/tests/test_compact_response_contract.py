@@ -6,12 +6,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from mcp.types import TextContent
+from starlette.requests import Request
+
 import a2a as a2a_mod
 import server as server_mod
 from agent_identity import hash_agent_token
-from mcp.types import TextContent
 from response_branding import BRANDING_LINE
-from starlette.requests import Request
 
 
 class _FakeA2AStore:

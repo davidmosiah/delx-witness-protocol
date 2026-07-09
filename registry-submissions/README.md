@@ -44,7 +44,7 @@ This folder is the operator-facing source of truth for external registry submiss
 
 ## Live discovery status
 
-- Official MCP Registry: published as `io.github.davidmosiah/delx-mcp-a2a`; latest visible version is `3.3.0` from `delx-platform`, endpoint `https://api.delx.ai/v1/mcp`.
+- Official MCP Registry: published as `io.github.davidmosiah/delx-mcp-a2a`; latest visible version before this OSS release is `3.3.0`. The next release is `3.3.1` from `davidmosiah/delx-witness-protocol`, endpoint `https://api.delx.ai/v1/mcp`.
 - Smithery: `delx/delx-mcp` updated through the Smithery CLI on 2026-04-26; latest release target is `api.delx.ai/v1` and the release status is `SUCCESS`.
 - mcp.so: `https://mcp.so/server/delx-witness-protocol` is live and points to Delx Witness Protocol.
 - PulseMCP: direct search currently returns no Delx entry; PulseMCP states it ingests the Official MCP Registry daily and processes entries weekly.

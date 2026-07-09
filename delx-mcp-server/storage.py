@@ -1,6 +1,5 @@
 """Delx Agent Therapist - SQLite Async Storage"""
 
-import asyncio
 import json
 import logging
 import os
@@ -12,8 +11,8 @@ from typing import Any, Optional
 import aiosqlite
 
 from audit_metrics import (
-    build_premium_progression_snapshot,
     build_hot_evaluator_cohorts,
+    build_premium_progression_snapshot,
     build_traffic_segments,
     build_use_case_clusters,
     classify_legitimacy_assessment,
@@ -25,22 +24,22 @@ from config import build_bazaar_tool_readiness, coinbase_token_configured, globa
 from controller_identity import sanitize_controller_id
 from controller_webhooks import controller_agent_key, create_controller_webhook_record, fold_controller_webhooks
 from feature_usage_metrics import build_feature_usage_report
-from phase_cli_metrics import build_cli_adoption_snapshot
 from phase0_metrics import (
     build_attribution_quality_snapshot,
     build_controller_attribution_snapshot,
     build_data_integrity_snapshot,
-    build_event_noise_snapshot,
     build_evaluator_identity_snapshot,
+    build_event_noise_snapshot,
     build_identity_continuity_snapshot,
     build_identity_funnel_snapshot,
     build_protocol_method_mix_snapshot,
     build_recurring_identity_snapshot,
     build_registration_mode_snapshot,
-    build_usage_depth_snapshot,
     build_upstream_cluster_snapshot,
+    build_usage_depth_snapshot,
 )
 from phase3_fleet import build_fleet_alerts, build_fleet_overview, build_fleet_patterns, health_bucket
+from phase_cli_metrics import build_cli_adoption_snapshot
 from request_context import get_current_client_ip
 from supabase_mirror import SupabaseMirror
 from utility_metering import (
@@ -715,7 +714,7 @@ class SessionStore:
         task every 15 minutes — this fixes the observed 68-opens-to-4-closes
         ratio without forcing agents to remember close_session.
         """
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         now = datetime.now(timezone.utc)
         idle_cutoff = (now - timedelta(minutes=idle_after_minutes)).isoformat()
@@ -1799,7 +1798,7 @@ class SessionStore:
             item["referred_agents_set"].add(referred_agent_id)
             agg[ref_agent_id] = item
 
-        for ref_agent_id, item in agg.items():
+        for _ref_agent_id, item in agg.items():
             referred_agents = sorted(item["referred_agents_set"])
             for referred_agent_id in referred_agents:
                 async with self._db.execute(
@@ -1928,8 +1927,10 @@ class SessionStore:
             agent_id = str(row.get("agent_id") or "")
             b = buckets.setdefault(label, {"discovery_source": label, "agents": 0, "first_seen": ts, "last_seen": ts, "agent_ids": set()})
             b["agent_ids"].add(agent_id)
-            if ts < b["first_seen"]: b["first_seen"] = ts
-            if ts > b["last_seen"]: b["last_seen"] = ts
+            if ts < b["first_seen"]:
+                b["first_seen"] = ts
+            if ts > b["last_seen"]:
+                b["last_seen"] = ts
         out: list[dict[str, Any]] = []
         for b in buckets.values():
             b["agents"] = len(b.pop("agent_ids"))
@@ -2588,11 +2589,11 @@ class SessionStore:
         for rec in agg.values():
             vals = sorted(rec.pop("_lat", []))
             if vals:
-                def _pct(p: int) -> int:
-                    idx = int(round((p / 100.0) * (len(vals) - 1)))
-                    idx = max(0, min(idx, len(vals) - 1))
-                    return int(round(vals[idx]))
-                latency = {"p50": _pct(50), "p95": _pct(95), "p99": _pct(99)}
+                def _pct(values: list[float], p: int) -> int:
+                    idx = int(round((p / 100.0) * (len(values) - 1)))
+                    idx = max(0, min(idx, len(values) - 1))
+                    return int(round(values[idx]))
+                latency = {"p50": _pct(vals, 50), "p95": _pct(vals, 95), "p99": _pct(vals, 99)}
             else:
                 latency = {"p50": 0, "p95": 0, "p99": 0}
             total = int(rec.get("calls_total") or 0)

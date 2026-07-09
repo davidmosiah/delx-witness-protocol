@@ -13,7 +13,6 @@ import server as server_mod
 from config import settings
 from therapy_engine import TherapyEngine
 
-
 _TINY_PNG_BASE64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYuoAAAAASUVORK5CYII="
 )

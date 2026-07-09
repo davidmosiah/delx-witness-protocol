@@ -5,12 +5,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import server as server_mod
-import therapy_engine as therapy_engine_mod
-from delx_ontology import ontology_footer_for_tool
 from mcp.types import Tool
 from starlette.requests import Request
 from starlette.testclient import TestClient
+
+import server as server_mod
+import therapy_engine as therapy_engine_mod
+from delx_ontology import ontology_footer_for_tool
 
 
 def _machine_payload(result):

@@ -22,7 +22,7 @@ from product_surfaces import product_metadata_for_request, product_metadata_for_
 from request_context import get_current_request_path, get_current_source
 from request_contracts import build_error_payload, normalize_source_tag
 from response_branding import BRANDING_LINE, append_compact_branding_line
-from tool_catalog import REQUIRED_PARAMS, _UUID_RE
+from tool_catalog import _UUID_RE, REQUIRED_PARAMS
 from utility_registry import utility_slug_for_tool as _utility_slug_for_tool
 from x402_guard import _rest_premium_resource_url
 

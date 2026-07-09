@@ -24,8 +24,8 @@ __all__ = [
 
 def __getattr__(name: str):
     """Lazy bridge for any other historical module-level symbol."""
-    from therapy_engine import helpers as _helpers
     from therapy_engine import engine as _engine
+    from therapy_engine import helpers as _helpers
 
     if hasattr(_helpers, name):
         return getattr(_helpers, name)

@@ -1,5 +1,5 @@
-import sys
 import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -13,16 +13,16 @@ from phase0_metrics import (
     build_attribution_quality_snapshot,
     build_controller_attribution_snapshot,
     build_data_integrity_snapshot,
-    build_event_noise_snapshot,
     build_evaluator_identity_snapshot,
+    build_event_noise_snapshot,
     build_identity_continuity_snapshot,
     build_identity_funnel_snapshot,
-    normalize_public_stats_payload,
     build_protocol_method_mix_snapshot,
     build_registration_mode_snapshot,
-    build_usage_depth_snapshot,
     build_upstream_cluster_snapshot,
+    build_usage_depth_snapshot,
     classify_upstream_cluster,
+    normalize_public_stats_payload,
 )
 
 

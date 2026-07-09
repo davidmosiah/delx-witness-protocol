@@ -8,8 +8,8 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from therapy_engine import TherapyEngine
 import server as server_mod
+from therapy_engine import TherapyEngine
 
 
 class _WitnessLineageStore:

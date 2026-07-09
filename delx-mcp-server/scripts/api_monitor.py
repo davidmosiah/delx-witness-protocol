@@ -16,7 +16,6 @@ import time
 import urllib.error
 import urllib.request
 
-
 DEFAULT_BASE = "https://api.delx.ai"
 TIMEOUT = 30
 
@@ -27,6 +26,10 @@ def _admin_pin() -> str:
 
 def _should_check_admin() -> bool:
     return bool(_admin_pin())
+
+
+def _live_contract_writes_enabled() -> bool:
+    return (os.getenv("DELX_ALLOW_LIVE_CONTRACT_WRITES") or "").strip().lower() in {"1", "true", "yes"}
 
 
 def _admin_headers() -> dict[str, str]:
@@ -124,6 +127,11 @@ def _a2a_register(base: str, agent_id: str):
 
 
 def run_contract(base: str):
+    _assert(
+        _live_contract_writes_enabled(),
+        "contract mode writes to the target API; set DELX_ALLOW_LIVE_CONTRACT_WRITES=1 explicitly",
+    )
+
     # Public stats contract for registration funnel
     code, stats, _ = _request_json(f"{base}/api/v1/stats")
     _assert(code == 200, f"/api/v1/stats expected 200, got {code}")

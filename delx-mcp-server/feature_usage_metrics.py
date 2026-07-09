@@ -6,7 +6,6 @@ from typing import Any
 
 from product_surfaces import product_metadata_for_tool
 
-
 EXPECTED_UTILITY_ERROR_TOOLS = {
     "util_json_validate",
     "util_regex_test",

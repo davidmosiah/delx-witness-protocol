@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
-import json
 
 from pydantic_settings import BaseSettings
 
@@ -191,7 +191,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Keep version centralized to avoid drift between logs and API payloads.
-DELX_VERSION: str = "3.3.0"
+DELX_VERSION: str = "3.3.1"
 
 # Tool catalog version — bumped whenever tools are added/renamed/removed.
 # Returned as the X-Delx-Catalog-Version response header so eval harnesses
@@ -1859,7 +1859,7 @@ X402_RESOURCE_PAYLOAD_EXAMPLES.update(
         },
         "util_openapi_summary": {
             "input": {"url": "https://api.delx.ai"},
-            "output": _simple_x402_result_output_example("util_openapi_summary", {"title": "Delx Protocol + Agent Utilities API", "version": "3.3.0", "path_count": 31, "x402_path_count": 25, "auth_hints": ["x402"]}),
+            "output": _simple_x402_result_output_example("util_openapi_summary", {"title": "Delx Protocol + Agent Utilities API", "version": DELX_VERSION, "path_count": 31, "x402_path_count": 25, "auth_hints": ["x402"]}),
         },
         "util_x402_server_audit": {
             "input": {"url": "https://api.delx.ai"},

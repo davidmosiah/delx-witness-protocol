@@ -5,7 +5,8 @@ import json
 from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
+
 
 def _server():
     import server as server_mod
@@ -146,13 +147,12 @@ async def tools_catalog(request: Request) -> JSONResponse:
     _VALID_FORMATS = {"full", "names", "super-compact", "super_compact", "supercompact", "tiny", "ultracompact", "minimal", "compact", "lean", ""}
     if fmt and fmt not in _VALID_FORMATS:
         return JSONResponse(
-            {"error": "invalid format", "hint": f"format must be one of: full, names, minimal, lean, ultracompact, compact", "received": fmt},
+            {"error": "invalid format", "hint": "format must be one of: full, names, minimal, lean, ultracompact, compact", "received": fmt},
             status_code=400,
             headers=_cors(),
         )
 
     compact_tools = [_server()._tool_display_row(t, include_input_schema=False, include_aliases=True) for t in tools]
-    pricing = {t.name: _server().get_tool_pricing_payload(t.name) for t in tools}
     if fmt == "compact":
         return JSONResponse(
             {
@@ -366,8 +366,6 @@ async def tool_aliases(request: Request) -> JSONResponse:
         style = "full"
 
     canonical = sorted(_server().CANONICAL_TO_ALIASES)
-    alias_rows = [{"alias": alias, "canonical": canonical_name} for alias, canonical_name in sorted(_server().TOOL_ALIASES.items())]
-
     if style == "compact":
         return JSONResponse(
             {
@@ -1606,10 +1604,8 @@ async def mcp_spec(request: Request) -> JSONResponse:
 async def capabilities(request: Request) -> JSONResponse:
     """Machine-readable capabilities registry (agent-native discovery surface)."""
     tools = await _server().list_tools()
-    policy, by_tool = await _server()._runtime_monetization_snapshot(tools)
     tool_index = []
     for t in tools:
-        pricing = by_tool[t.name]
         row = {
             "name": t.name,
             "preferred_name": _server()._preferred_tool_display_name(t.name),
@@ -2115,5 +2111,4 @@ async def recovery_outcome_guide(request: Request) -> JSONResponse:
         },
         headers=_cors(),
     )
-
 

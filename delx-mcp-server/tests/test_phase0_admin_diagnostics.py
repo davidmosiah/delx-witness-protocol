@@ -161,7 +161,7 @@ class AdminDiagnosticsStoreTests(unittest.IsolatedAsyncioTestCase):
             entrypoint="mcp",
             client_ip="69.12.59.14",
         )
-        support_session = await self._create_session(
+        _support_session = await self._create_session(
             "support-agent",
             source="other",
             entrypoint="mcp",

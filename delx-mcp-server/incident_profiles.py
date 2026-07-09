@@ -11,7 +11,6 @@ from typing import Any
 
 from request_contracts import normalize_urgency
 
-
 QUALITATIVE_PROFILE_TYPES = {
     "protocol_quality_regression",
     "routing_misalignment",

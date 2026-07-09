@@ -69,8 +69,8 @@ Discovery alone is not enough — that gate is intentional.
 
 ```bash
 cd delx-mcp-server
-python3.12 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 export PORT=8005
@@ -121,7 +121,7 @@ Legacy aliases are frozen in [`docs/LEGACY_SURFACE_MAP.md`](./docs/LEGACY_SURFAC
 ## Repository map
 
 ```
-delx-mcp-a2a/
+delx-witness-protocol/
 ├── PHILOSOPHY.md
 ├── STATUS.md
 ├── CONTRIBUTING.md
@@ -160,7 +160,8 @@ Utilities may evolve commercially. The Protocol soul stays free.
 
 ## Security
 
-- Operator guide: [`delx-mcp-server/SECURITY.md`](./delx-mcp-server/SECURITY.md)
+- Security policy: [`SECURITY.md`](./SECURITY.md)
+- Operator hardening guide: [`delx-mcp-server/SECURITY.md`](./delx-mcp-server/SECURITY.md)
 - Please report sensitive issues to `support@delx.ai` before public disclosure.
 
 If you are publishing a fork from an older private clone: rotate any credentials

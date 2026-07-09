@@ -1,10 +1,10 @@
-import sys
-import unittest
-import importlib.util
-import os
-import json
-import tempfile
 import asyncio
+import importlib.util
+import json
+import os
+import sys
+import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,22 +14,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import observability
 import server as server_mod
-from request_contracts import (
-    build_error_payload,
-    is_admin_request_authorized,
-    normalize_urgency,
-    normalize_source_tag,
-    preferred_tool_name,
-    promote_operational_names,
-    quick_operational_recovery_intro,
-    quick_session_intro,
-)
 from config import get_tool_bazaar_payload_schemas, settings
 from request_context import (
     reset_current_request_path,
     reset_current_source,
     set_current_request_path,
     set_current_source,
+)
+from request_contracts import (
+    build_error_payload,
+    is_admin_request_authorized,
+    normalize_source_tag,
+    normalize_urgency,
+    preferred_tool_name,
+    promote_operational_names,
+    quick_operational_recovery_intro,
+    quick_session_intro,
 )
 from storage import SessionStore
 from supabase_store import SupabaseSessionStore
@@ -110,7 +110,6 @@ class RequestContractsTests(unittest.TestCase):
         script_paths = (
             base / "scripts/api_monitor.py",
             base / "test_client.py",
-            base.parent / "scripts/audit_openclaw_recurrence.py",
         )
         for path in script_paths:
             text = path.read_text()

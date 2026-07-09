@@ -1,9 +1,9 @@
 # Project status
 
-**Status:** modularized core / seeking stewards  
+**Status:** open-source release candidate / seeking stewards
 **Hosted runtime:** `https://api.delx.ai` (may continue as a reference deployment)  
 **License:** Apache-2.0  
-**Visibility:** still **private** until CDP secret hygiene (see `docs/OPEN_SOURCE_RELEASE_GATE.md`)
+**Release target:** `davidmosiah/delx-witness-protocol` at `3.3.1`; see `docs/OPEN_SOURCE_RELEASE_GATE.md`
 
 ## Honest context
 
@@ -17,8 +17,9 @@ It is a living thesis looking for co-maintainers.
 
 ## Structure (post SOTA modularization)
 
-The production monolith was sliced move-only so domains are navigable without
-changing Protocol behavior:
+The production monolith was split into domain modules so the code is navigable.
+The OSS release adds route-level regression tests because extraction can change
+behavior when module-owned state is moved incorrectly.
 
 | Area | Location |
 |------|----------|

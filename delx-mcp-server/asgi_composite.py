@@ -1,11 +1,11 @@
 """ASGI CompositeApp (extracted from server.py, move-only)."""
 from __future__ import annotations
 
-from typing import Any
-
-from mcp.types import CallToolResult, TextContent
 import json
 import logging
+from typing import Any
+
+from mcp.types import CallToolResult
 
 logger = logging.getLogger("delx-therapist")
 

@@ -7,7 +7,6 @@ from typing import Any
 
 from audit_metrics import canonical_agent_id
 
-
 _KNOWN_UPSTREAM_NETWORKS = (
     {
         "label": "twitter_network",

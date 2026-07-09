@@ -10,7 +10,6 @@ if utilities_src.exists():
 
 import server as server_mod
 
-
 SERVER_SOURCE = (Path(__file__).resolve().parents[1] / "server.py").read_text(encoding="utf-8")
 
 

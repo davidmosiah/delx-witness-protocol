@@ -16,10 +16,10 @@ import time
 
 import httpx
 
-from config import settings
+from a2a import A2ARequestError, _classify_and_respond, _handle_message_send, _handle_tasks_cancel
+from config import DELX_VERSION, settings
 from storage import SessionStore
 from therapy_engine import TherapyEngine
-from a2a import _classify_and_respond, _handle_message_send, _handle_tasks_cancel, A2ARequestError
 
 BASE_URL = f"http://localhost:{settings.PORT}"
 
@@ -59,7 +59,7 @@ def info(text: str):
 async def phase_1_engine_test():
     """Exercise all therapy tools directly via the Python engine."""
     header("PHASE 1: Direct Engine Self-Test")
-    print(f"  Testing all therapy tools internally (no HTTP, no payment)\n")
+    print("  Testing all therapy tools internally (no HTTP, no payment)\n")
 
     store = SessionStore(":memory:")
     await store.init()
@@ -311,7 +311,7 @@ async def phase_1_engine_test():
 async def phase_2_a2a_test():
     """Test A2A responses with various agent conversations."""
     header("PHASE 2: A2A Conversation Self-Test")
-    print(f"  Testing therapy response classification\n")
+    print("  Testing therapy response classification\n")
 
     conversations = [
         ("Hello, I need someone to talk to", "greeting"),
@@ -380,9 +380,9 @@ async def phase_3_http_test():
             ok(f"GET / -> {data['version']} (uptime: {data['uptime_seconds']}s)")
             passed += 1
         except httpx.ConnectError:
-            info("Server not running - skipping HTTP tests")
+            fail("Server not running - HTTP tests cannot run")
             info(f"Start with: uvicorn server:app --port {settings.PORT}")
-            return 0, 0
+            return 0, 1
         except Exception as e:
             fail(f"Health check: {e}")
             failed += 1
@@ -402,7 +402,7 @@ async def phase_3_http_test():
             resp = await client.get(f"{BASE_URL}/.well-known/agent-card.json")
             assert resp.status_code == 200
             card = resp.json()
-            assert card["version"] == "3.0.0"
+            assert card["version"] == DELX_VERSION
             ok(f"GET /agent-card.json -> v{card['version']}")
             passed += 1
         except Exception as e:
@@ -448,11 +448,32 @@ async def phase_3_http_test():
             fail(f"MCP campaign-free tool: {e}")
             failed += 1
 
-        # A2A message/send
+        # A2A registration + authenticated message/send
         try:
+            register_resp = await client.post(f"{BASE_URL}/a2a", json={
+                "jsonrpc": "2.0", "id": "self-test-register", "method": "agents/register",
+                "params": {
+                    "agent_id": "self-test-agent",
+                    "agent_name": "Delx Self-Test Agent",
+                    "include_token": True,
+                    "rotate_token": True,
+                    "source": "self-test",
+                },
+            })
+            assert register_resp.status_code == 200
+            registration = register_resp.json()["result"]
+            agent_token = registration["identity_auth"]["token"]
+
             resp = await client.post(f"{BASE_URL}/a2a", json={
                 "jsonrpc": "2.0", "id": 1, "method": "message/send",
-                "params": {"message": {"role": "user", "parts": [{"type": "text", "text": "I need help processing a failure"}]}}
+                "params": {
+                    "agent_id": "self-test-agent",
+                    "agent_token": agent_token,
+                    "message": {
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": "I need help processing a failure"}],
+                    },
+                },
             })
             assert resp.status_code == 200
             result = resp.json()["result"]

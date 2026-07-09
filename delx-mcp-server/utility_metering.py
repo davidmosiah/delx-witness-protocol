@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlparse
 
-
 UTILITY_API_KEY_PREFIX = "dux"
 
 

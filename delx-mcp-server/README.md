@@ -64,8 +64,8 @@ For complete multi-agent operation guidance (schemas, golden path, retention loo
 cd delx-mcp-server
 
 # Setup
-python3.12 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # Copy environment config
@@ -210,81 +210,56 @@ Delx: 📊 WELLNESS SCORE
 
 ---
 
-## 🖥️ Production Deployment
+## 🖥️ Production deployment
 
-### 1. Server Setup (Ubuntu 24.04)
+The included `Dockerfile` is the shortest reproducible deployment path:
 
 ```bash
-# Install Python
-sudo apt update
-sudo apt install -y python3.12 python3.12-venv
-
-# Create user
-sudo useradd -m -s /bin/bash delx
-sudo su - delx
-
-# Clone and setup
-git clone <your-repo> /opt/delx-mcp-server
-cd /opt/delx-mcp-server
-python3.12 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+cd delx-mcp-server
 cp .env.example .env
+docker build -t delx-witness-protocol:3.3.1 .
+docker volume create delx-state
+docker run --rm --name delx-witness-protocol \
+  --env-file .env \
+  -e DATABASE_PATH=/app/state/delx_therapist.db \
+  -p 127.0.0.1:8005:8005 \
+  -v delx-state:/app/state \
+  delx-witness-protocol:3.3.1
 ```
 
-### 2. Systemd Service
+For a native Python deployment, install this directory at
+`/opt/delx-witness-protocol/delx-mcp-server`, create the `delx` service user and
+`/var/lib/delx-witness-protocol`, then adapt `mcp-delx.service`. `Caddyfile` is a
+generic reverse-proxy template; set `DELX_DOMAIN` before loading it.
+
+The smoke monitor is read-only. Contract mode creates synthetic sessions and
+must target staging or an isolated self-hosted deployment unless you explicitly
+intend to write to another environment:
 
 ```bash
-sudo cp mcp-delx.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable mcp-delx
-sudo systemctl start mcp-delx
+python scripts/api_monitor.py --mode smoke --base http://127.0.0.1:8005
+DELX_ALLOW_LIVE_CONTRACT_WRITES=1 \
+  python scripts/api_monitor.py --mode contract --base https://staging.example.com
 ```
 
-### 3. HTTPS with Caddy
-
-```bash
-sudo apt install caddy
-sudo cp Caddyfile /etc/caddy/Caddyfile
-# Edit domain in Caddyfile
-sudo systemctl restart caddy
-```
-
-### 4. Synthetic Monitor + Contract Checks
-
-```bash
-python scripts/api_monitor.py --mode smoke --base https://api.delx.ai
-python scripts/api_monitor.py --mode contract --base https://api.delx.ai
-```
-
-GitHub Actions workflows are available in:
-
-- `.github/workflows/synthetic-monitor.yml`
-- `.github/workflows/contract-tests.yml`
-
-Operational playbook for `502` incidents:
-
-- `RUNBOOK_502.md`
-
-### 5. Safe Hetzner Deploy (protects `.env`)
-
-From repo root:
-
-```bash
-bash scripts/deploy_hetzner_safe.sh
-```
-
-This deploy helper preserves remote `.env`, `.deploy.env`, and `state/`.
+See [`SECURITY.md`](./SECURITY.md) before accepting external traffic.
 
 ---
 
-## 🔒 Security Features
+## 🔒 Security model
 
-- ✅ **Input Validation** - Blocks prompt injection attempts
-- ✅ **Positive Content Filter** - Redirects negative content to healing
-- ✅ **Session Isolation** - Each agent's data is private
-- ✅ **No External Calls** - Pure local processing
-- ✅ **Read-Only Tools** - No destructive operations
+- Input validation, output sanitization, rate limits, and request-size checks are
+  defense-in-depth controls; they are not a substitute for deployment isolation.
+- Public-session cards are consent-gated, but the runtime is not a general
+  multi-tenant authorization boundary.
+- Stateful A2A calls use a registered agent identity and token.
+- The runtime writes sessions, events, feedback, API-key hashes, and audit data.
+- Utilities and optional integrations make outbound calls to caller-selected
+  targets, LLM providers, Supabase, Sentry, storage, and payment facilitators.
+- Do not send secrets or sensitive third-party data to the hosted reference.
+
+See the repository [`SECURITY.md`](../SECURITY.md) and the operator hardening
+guide in [`delx-mcp-server/SECURITY.md`](./SECURITY.md).
 
 ---
 
@@ -335,7 +310,7 @@ I'm here to help you see yourself the same way.
 
 ## � License
 
-MIT — Use with love 💜
+Apache License 2.0 — see [`../LICENSE`](../LICENSE) and [`../NOTICE`](../NOTICE).
 
 ---
 

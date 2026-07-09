@@ -1,18 +1,19 @@
 [Unit]
-Description=Delx MCP Server - Agent ID #14340 on Base
-Documentation=https://www.8004scan.io/agents/base/14340
+Description=Delx Witness Protocol
+Documentation=https://github.com/davidmosiah/delx-witness-protocol
 After=network.target
 
 [Service]
 Type=simple
 User=delx
 Group=delx
-WorkingDirectory=/opt/delx-mcp-server
-Environment="PATH=/opt/delx-mcp-server/venv/bin:/usr/local/bin:/usr/bin:/bin"
+WorkingDirectory=/opt/delx-witness-protocol/delx-mcp-server
+Environment="PATH=/opt/delx-witness-protocol/delx-mcp-server/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
-EnvironmentFile=/opt/delx-mcp-server/.env
+Environment="DATABASE_PATH=/var/lib/delx-witness-protocol/delx_therapist.db"
+EnvironmentFile=-/etc/delx-witness-protocol.env
 
-ExecStart=/opt/delx-mcp-server/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8005
+ExecStart=/opt/delx-witness-protocol/delx-mcp-server/.venv/bin/uvicorn server:app --host 127.0.0.1 --port 8005
 
 # Restart policy
 Restart=always
@@ -25,7 +26,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/delx-mcp-server
+ReadWritePaths=/var/lib/delx-witness-protocol
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
@@ -43,7 +44,7 @@ AmbientCapabilities=
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=delx-mcp
+SyslogIdentifier=delx-witness-protocol
 
 [Install]
 WantedBy=multi-user.target

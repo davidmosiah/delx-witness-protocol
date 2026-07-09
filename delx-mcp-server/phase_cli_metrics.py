@@ -4,7 +4,6 @@ import json
 import re
 from typing import Any
 
-
 _INSTALL_ID_RE = re.compile(r"[^a-zA-Z0-9_.:-]+")
 _CLI_VERSION_RE = re.compile(r"[^0-9A-Za-z.+_-]+")
 

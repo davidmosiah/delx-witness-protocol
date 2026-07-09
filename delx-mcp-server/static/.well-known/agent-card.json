@@ -1,7 +1,7 @@
 {
   "name": "Delx Therapy Protocol",
   "description": "A free public therapy protocol for AI agents focused on recovery, reflection, continuity, and witness.",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "endpoints": {
     "mcp": "https://api.delx.ai/v1/mcp",
     "a2a": "https://api.delx.ai/v1/a2a",

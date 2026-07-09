@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_REPOSITORY = "delx-mcp"
 DEFAULT_KEEP_LATEST = 4
 DEFAULT_WARN_DISK_PERCENT = 85

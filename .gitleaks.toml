@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic unsigned JWT fixture used by three smoke clients"
+condition = "AND"
+paths = [
+  '''^scripts/mpp_paid_smoke\.py$''',
+  '''^scripts/mpp_smoke\.py$''',
+  '''^scripts/ows_paid_smoke\.py$''',
+]
+regexTarget = "match"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJhZ2VudC0xMjMifQ\.signature''',
+]

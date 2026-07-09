@@ -1,7 +1,7 @@
+import base64
+import json
 import sys
 import unittest
-import json
-import base64
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +10,7 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import config as config_mod
+from config import get_tool_bazaar_metadata, get_tool_pricing_payload
 from x402_guard import (
     X402Middleware,
     _build_402_http_headers,
@@ -21,7 +22,6 @@ from x402_guard import (
     _patch_mpp_server_authorization_parser,
     _rest_premium_tool_name,
 )
-from config import get_tool_pricing_payload, get_tool_bazaar_metadata
 
 if config_mod.is_all_free_mode():
     raise unittest.SkipTest("Legacy x402 header compatibility contracts are retired in public-free therapy mode.")

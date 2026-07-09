@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 PROTOCOL_CANONICAL_URL = "https://delx.ai/protocol"
 AGENT_TOOLS_CANONICAL_URL = "https://delx.ai/utilities"
 DISCOVERY_CANONICAL_URL = "https://delx.ai/docs/discovery"

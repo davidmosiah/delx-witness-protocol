@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from starlette.routing import Mount, Route
+from starlette.routing import Route
 
 
 def _server():

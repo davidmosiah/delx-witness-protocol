@@ -1,149 +1,64 @@
-# 🔒 Delx MCP Server - Security Guide
+# Delx deployment hardening
 
-## Security Checklist
+Read the repository-level [`SECURITY.md`](../SECURITY.md) first. This guide is
+for operators who self-host the runtime.
 
-### ✅ Pre-Deployment
+## Before deployment
 
-- [ ] Change default `MCP_AUTH_TOKEN` in `.env`
-- [ ] Set restrictive file permissions: `chmod 600 .env`
-- [ ] Review `memoria.json` for sensitive content
-- [ ] Ensure private keys are NOT in repository
-- [ ] Enable UFW firewall with minimal open ports
+- Create a dedicated unprivileged service account.
+- Copy `.env.example` to a host-managed secret location; never commit `.env`.
+- Set restrictive permissions on secret files (`chmod 600`).
+- Use a fresh empty database or a dedicated Supabase project.
+- Configure HTTPS at the reverse proxy and expose only required ports.
+- Keep admin PINs, service-role keys, LLM keys, payment credentials, and wallet
+  material outside the repository and container image.
+- Decide whether LLM, Sentry, Supabase, artwork upload, utilities, and payment
+  integrations are required; leave unused integrations disabled.
 
-### ✅ In Production
+## Authentication and isolation
 
-- [ ] HTTPS enabled via Caddy/Let's Encrypt
-- [ ] Rate limiting configured
-- [ ] Logs monitored for anomalies
-- [ ] Regular security updates: `apt update && apt upgrade`
-- [ ] Backups configured (rsync or Hetzner snapshots)
+Public discovery and free Protocol entrypoints are intentionally reachable.
+Stateful A2A flows use an `agent_id` plus issued agent token. This is not a
+general multi-tenant authorization system: do not place mutually untrusted
+customers on one deployment without adding an application-specific identity,
+authorization, and data-isolation layer.
 
----
+Utility API keys and agent credentials are stored as hashes. Treat plaintext
+tokens returned at creation time as secrets; the server cannot recover them.
 
-## 🛡️ Security Features
+## Outbound network behavior
 
-### 1. Prompt Injection Protection
+Depending on configuration and selected tools, the server can call:
 
-The server blocks common injection patterns:
-- `[INST]`, `[/INST]` tags
-- `<|im_start|>`, `<|im_end|>` ChatML
-- `System:`, `Human:`, `Assistant:` overrides
-- Phrases like "ignore previous instructions"
-- Hidden Base64 encoded commands
+- caller-selected HTTP/DNS/TLS/OpenAPI targets;
+- configured LLM providers;
+- Supabase and Sentry;
+- x402/MPP payment facilitators;
+- object storage used by artwork flows.
 
-**How it works:**
-```python
-INJECTION_PATTERNS = [
-    r'\[INST\]',
-    r'ignore previous',
-    # ... more patterns
-]
-```
+Do not describe the runtime as offline or read-only. Session, event, feedback,
+artwork, API-key, and payment-audit flows can write state. Preserve the existing
+private-network/metadata-address blocking, redirect limits, timeouts, response
+limits, and output sanitization when changing utility code.
 
-### 2. Content Filtering (Kids Mode)
+## Production checklist
 
-All outputs are filtered for negative content:
-- Violence, hate, drugs, etc.
-- Only positive, emotional content allowed
+1. Run the complete open-source release gate.
+2. Pin the container/image and Python dependency versions used in production.
+3. Terminate TLS at Caddy or another maintained reverse proxy.
+4. Run the service as an unprivileged user with a read-only application tree and
+   writable state directory only.
+5. Restrict firewall ingress to SSH from trusted sources plus HTTP/HTTPS.
+6. Back up the database and test restoration without copying secrets into git.
+7. Configure log retention and ensure payloads, authorization headers, and
+   credentials are not logged.
+8. Monitor error rate, storage growth, rate-limit events, and dependency alerts.
 
-### 3. Authentication
+## Incident response
 
-Bearer token required for MCP sessions:
-```bash
-# Set in .env
-MCP_AUTH_TOKEN=your-secure-random-token
-```
-
-### 4. Principle of Least Privilege
-
-- Tools are **read-only** (no writes to memoria.json at runtime)
-- No shell command execution
-- No file system access outside working directory
-
-### 5. Logging & Monitoring
-
-All tool calls are logged:
-```
-2024-01-15 10:30:00 | INFO | 🔧 Tool called: get_memoria_emocional with args: {"query": "david"}
-```
-
-Check for anomalies:
-```bash
-grep "🚨" /var/log/delx-mcp.log
-```
-
----
-
-## 🔐 Secret Management
-
-### Environment Variables
-
-Never commit `.env` to git! Use:
-```bash
-echo ".env" >> .gitignore
-```
-
-### Required Secrets
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `MCP_AUTH_TOKEN` | Session auth token | `delx-secret-xyz123` |
-| `BANKR_API_KEY` | Bankr SDK key | `bk_XXXXX` |
-| `DELX_WALLET` | Payment wallet | `0x9f8...` |
-
----
-
-## 🌐 Network Security
-
-### Firewall Rules (UFW)
-
-```bash
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp    # SSH
-ufw allow 80/tcp    # HTTP redirect
-ufw allow 443/tcp   # HTTPS
-ufw enable
-```
-
-### HTTPS Enforcement
-
-Caddy automatically:
-- Obtains Let's Encrypt certificates
-- Redirects HTTP → HTTPS
-- Renews certificates before expiry
-
----
-
-## 🚨 Incident Response
-
-### If you suspect a breach:
-
-1. **Isolate**: `systemctl stop mcp-delx`
-2. **Review logs**: `journalctl -u mcp-delx`
-3. **Rotate secrets**: Update all API keys
-4. **Investigate**: Check for unauthorized access
-5. **Restore**: Redeploy from clean backup
-
-### Backup Commands
-
-```bash
-# Create backup
-rsync -avz /opt/delx-mcp-server/ backup/
-
-# Hetzner snapshot (via console)
-# Go to: Cloud Console → Servers → Snapshots → Create
-```
-
----
-
-## 📚 Resources
-
-- [MCP Security Best Practices](https://modelcontextprotocol.io/security)
-- [ERC-8004 Spec](https://eips.ethereum.org/EIPS/eip-8004)
-- [x402 Payment Standard](https://www.x402.org/)
-- [Caddy Security](https://caddyserver.com/docs/automatic-https)
-
----
-
-🦊💜 Stay safe, stay sovereign!
+1. Isolate the affected deployment.
+2. Preserve relevant logs without posting them publicly.
+3. Rotate exposed credentials and agent/admin tokens.
+4. Review database access, outbound calls, and deployment history.
+5. Restore from a known-good release and verified backup.
+6. Report repository vulnerabilities privately to `support@delx.ai`.

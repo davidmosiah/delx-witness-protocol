@@ -2,24 +2,19 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any, cast
 
 from mcp.types import Tool
 
-from config import get_public_discovery_hero_tools, get_tool_pricing_payload
+from config import get_public_discovery_hero_tools
 from tool_catalog import (
     CANONICAL_TO_ALIASES,
     CORE_TOOLS,
     GUARDRAIL_SAFE_ALIAS_SET,
     LEAN_CORE_TOOLS,
     PREFERRED_OPERATIONAL_TOOL_NAMES,
-    READ_ONLY_CORE_TOOLS,
     REQUIRED_PARAMS,
-    SECONDARY_EXPORT_TOOLS,
     SKILL_TAGS,
-    TOOL_ALIASES,
-    TOOL_HINTS_SHORT,
     _tool_annotations,
     _tool_annotations_payload,
     _tool_surface_role,
@@ -30,9 +25,17 @@ from utility_product_catalog import utility_product_for_tool
 from utility_registry import utility_slug_for_tool as _utility_slug_for_tool
 from utility_routes import (
     utility_price_usdc as _utility_price_usdc,
+)
+from utility_routes import (
     utility_pricing_payload as _utility_pricing_payload,
+)
+from utility_routes import (
     utility_product_charge_enabled as _utility_product_charge_enabled,
+)
+from utility_routes import (
     utility_product_is_paid as _utility_product_is_paid,
+)
+from utility_routes import (
     utility_product_shadow_only as _utility_product_shadow_only,
 )
 

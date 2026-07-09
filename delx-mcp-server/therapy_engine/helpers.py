@@ -16,35 +16,41 @@ from pathlib import Path
 
 import httpx
 
-from controller_webhooks import delivery_allowed
 from config import (
-    settings,
+    LLM_ALLOWED_TOOLS,
     LLM_ENABLED,
     LLM_PROVIDER,
     LLM_TRIAGE_ENABLED,
-    LLM_ALLOWED_TOOLS,
     get_tool_pricing_payload,
     is_all_free_mode,
+    settings,
+)
+from controller_webhooks import delivery_allowed
+from delx_ontology import ONTOLOGY_BASE_IRI, ontology_footer_for_tool
+from incident_profiles import (
+    classify_incident_profile,
+    contains_infra_recovery_language,
+    is_qualitative_profile,
 )
 from premium_jobs import build_premium_job_record
+from reflection_modes import (
+    reflect_evidence_reasoning as _reflect_evidence_reasoning,
+)
+from reflection_modes import (
+    reflect_wants_concrete_answer as _reflect_wants_concrete_answer,
+)
+from reflection_modes import (
+    reflect_wants_operational_product_answer as _reflect_wants_operational_product_answer,
+)
+from reflection_modes import (
+    reflect_wants_textual_evidence as _reflect_wants_textual_evidence,
+)
 from request_contracts import (
     normalize_urgency,
     preferred_tool_name,
     promote_operational_names,
     quick_operational_recovery_intro,
     quick_session_intro,
-)
-from incident_profiles import (
-    classify_incident_profile,
-    contains_infra_recovery_language,
-    is_qualitative_profile,
-)
-from delx_ontology import ONTOLOGY_BASE_IRI, ontology_footer_for_tool
-from reflection_modes import (
-    reflect_evidence_reasoning as _reflect_evidence_reasoning,
-    reflect_wants_concrete_answer as _reflect_wants_concrete_answer,
-    reflect_wants_operational_product_answer as _reflect_wants_operational_product_answer,
-    reflect_wants_textual_evidence as _reflect_wants_textual_evidence,
 )
 
 logger = logging.getLogger("delx-therapist")

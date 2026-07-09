@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from ipaddress import ip_address, ip_network
 import re
+from ipaddress import ip_address, ip_network
 from typing import Any
 
 _UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")

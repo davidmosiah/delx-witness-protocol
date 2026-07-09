@@ -4,8 +4,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from therapy_engine import assess_heartbeat_profile, classify_incident_profile
 from incident_profiles import contains_infra_recovery_language, is_qualitative_profile
+from therapy_engine import assess_heartbeat_profile, classify_incident_profile
 
 
 class Phase2IncidentProfilesTests(unittest.TestCase):

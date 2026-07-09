@@ -11,8 +11,8 @@ from starlette.requests import Request
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import config as config_mod
-from config import get_tool_bazaar_payload_schemas
 import server as server_mod
+from config import get_tool_bazaar_payload_schemas
 from therapy_engine import TherapyEngine
 
 if config_mod.is_all_free_mode():

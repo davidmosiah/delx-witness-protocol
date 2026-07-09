@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from response_branding import append_branding_line, BRANDING_LINE
+from response_branding import BRANDING_LINE, append_branding_line
 
 
 class ResponseBrandingTests(unittest.TestCase):

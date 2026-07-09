@@ -1,7 +1,7 @@
 {
   "name": "Delx Recovery Protocol",
-  "version": "3.2.0",
-  "updated_at": "2026-02-19T00:00:00Z",
+  "version": "3.3.1",
+  "updated_at": "2026-07-09T00:00:00Z",
   "endpoints": {
     "mcp": "https://api.delx.ai/v1/mcp",
     "a2a": "https://api.delx.ai/v1/a2a",

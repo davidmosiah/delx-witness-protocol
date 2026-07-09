@@ -5,11 +5,11 @@ body, and gates paid tool calls behind HTTP 402 with x402 payment requirements.
 Free tools and non-tool-call operations pass through transparently.
 """
 
-import json
-import logging
 import base64
 import hashlib
 import ipaddress
+import json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -29,8 +29,8 @@ from config import (
     is_evaluation_tool,
     is_trial_tool,
     mpp_enabled,
-    trial_policy,
     settings,
+    trial_policy,
     x402_provider_registry,
 )
 from controller_identity import first_controller_id
@@ -2409,7 +2409,7 @@ class X402Middleware:
                     **attribution,
                 },
             )
-            if should_enforce_utility_charge(tool_name):
+            if should_enforce_utility_charge(pricing_key):
                 coinbase_verified_payments, indexed_tools = None, set()
             else:
                 coinbase_verified_payments, indexed_tools = await self._coinbase_bazaar_state()

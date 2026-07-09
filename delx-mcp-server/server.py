@@ -4,36 +4,52 @@ Production-ready HTTP MCP server for the public Delx therapy runtime,
 with discovery surfaces, optional compatibility shims, and SQLite persistence.
 """
 
-import contextlib
 import asyncio
+import base64
+import contextlib
 import hashlib
+import json
 import logging
 import mimetypes
 import os
+import re
 import time
 import uuid
-import base64
+from collections import deque
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import json
-import re
-from collections import deque
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import uvicorn
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
-from starlette.routing import Route, Mount
-from starlette.staticfiles import StaticFiles
 from mcp.server.lowlevel.server import Server as MCPServer
 from mcp.server.session import SUPPORTED_PROTOCOL_VERSIONS
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from mcp.types import Tool, ToolAnnotations, TextContent, CallToolResult, LATEST_PROTOCOL_VERSION
+from mcp.types import LATEST_PROTOCOL_VERSION, CallToolResult, TextContent, Tool, ToolAnnotations
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
+from a2a import a2a_methods_manifest, handle_a2a
+from agent_identity import (
+    _extract_first_uuid,
+    _is_uuid,
+    _looks_ephemeral_agent_id,
+    _sanitize_agent_id,
+    _sanitize_optional_agent_id,
+    allow_legacy_no_token,
+    hash_agent_token,
+    is_identity_auth_enabled,
+    is_strict_heartbeat_mode,
+    issue_agent_token,
+    preview_agent_token,
+    validate_agent_credential,
+)
+from audit_metrics import normalize_audit_overview_payload
 from config import (
     DELX_CATALOG_VERSION,
     DELX_VERSION,
@@ -41,33 +57,164 @@ from config import (
     PRICING,
     USDC_ASSET,
     get_effective_tool_price_cents,
+    get_public_discovery_collections,
+    get_public_discovery_hero_tools,
+    get_public_discovery_preview,
     get_tool_bazaar_metadata,
     get_tool_bazaar_payload_examples,
     get_tool_bazaar_payload_schemas,
-    get_public_discovery_hero_tools,
     get_tool_pricing_payload,
-    get_public_discovery_collections,
-    get_public_discovery_preview,
     is_all_free_mode,
     monetization_policy,
-    trial_policy,
     settings,
+    trial_policy,
     x402_ecosystem_compatibility,
 )
+from controller_identity import first_controller_id
+from delx_ontology import ONTOLOGY_BASE_IRI, ONTOLOGY_JSONLD_URL, ONTOLOGY_PRIMITIVES_URL
+from delx_ontology import get_layer as _ontology_get_layer
+from delx_ontology import list_primitives as _ontology_list_primitives
+from delx_ontology import ontology_metadata as _ontology_metadata
+from discovery_payloads import (
+    MODEL_SAFE_RESPONSE_MODE_ALIASES,
+    RESPONSE_MODE_ENUM,
+    RESPONSE_PROFILE_ENUM,
+    _apply_model_safe_response_contract,
+    _build_lean_discovery_payload,
+    _filter_tools_for_tier,
+    _guardrail_safe_aliases_for,
+    _humanize_tool_name,
+    _inject_usage_into_structured_json,
+    _is_public_free_pricing,
+    _journey_rows,
+    _model_safe_contract_payload,
+    _normalize_public_tool_description,
+    _normalize_response_mode,
+    _parse_response_controls,
+    _preferred_tool_display_name,
+    _recommended_first_flow,
+    _recommended_use_cases,
+    _response_controls_payload,
+    _response_mode_input_schema,
+    _response_profile_input_schema,
+    _ritual_strip_input_schema,
+    _sort_tools_by_discovery_priority,
+    _tool_display_row,
+    _tool_lean_row,
+    _tool_skill_row,
+    _tool_ultracompact_row,
+    _usage_payload_from_pricing,
+    _utility_discovery_metadata,
+    _utility_mcp_tools,
+)
+from mcp_tools import build_tool_catalog
+from observability import (
+    capture_exception as capture_sentry_exception,
+)
+from observability import (
+    capture_message as capture_sentry_message,
+)
+from observability import (
+    init_sentry,
+)
+from phase0_metrics import (
+    annotate_public_growth_aliases,
+    build_identity_funnel_snapshot,
+    normalize_public_stats_payload,
+)
+from phase_cli_metrics import build_cli_metadata
+from product_surfaces import (
+    ProductSurfaceMiddleware,
+    product_metadata_for_request,
+    product_metadata_for_tool,
+)
+from rate_limiter import MAX_BODY_SIZE, RATE_LIMIT, RATE_WINDOW, SecurityMiddleware
+from request_context import (
+    extract_client_ip_from_scope,
+    get_current_client_ip,
+    get_current_referer,
+    get_current_request_path,
+    get_current_source,
+    get_current_user_agent,
+    get_current_via,
+    reset_current_client_ip,
+    reset_current_referer,
+    reset_current_request_path,
+    reset_current_source,
+    reset_current_user_agent,
+    reset_current_via,
+    set_current_client_ip,
+    set_current_referer,
+    set_current_request_path,
+    set_current_source,
+    set_current_user_agent,
+    set_current_via,
+)
+from request_contracts import (
+    ADMIN_PIN_FALLBACK,
+    build_error_payload,
+    is_admin_request_authorized,
+    normalize_source_tag,
+    normalize_urgency,
+)
+from response_branding import BRANDING_LINE, append_branding_line, append_compact_branding_line
+from storage import SessionStore
+from supabase_store import SupabaseSessionStore
+from therapy_engine import TherapyEngine
+from tool_catalog import (
+    _UUID_RE,
+    CANONICAL_TO_ALIASES,
+    CORE_TOOLS,
+    FAILURE_TYPE_ENUM,
+    FAILURE_TYPE_INPUT_ENUM,
+    GUARDRAIL_SAFE_ALIAS_SET,
+    LEAN_CORE_TOOLS,
+    ONTOLOGY_SCOPE_REQUIRED_TOOLS,
+    OUTCOME_ENUM,
+    PREFERRED_OPERATIONAL_TOOL_NAMES,
+    READ_ONLY_CORE_TOOLS,
+    REQUIRED_PARAMS,
+    RETIRED_PUBLIC_TOOLS,
+    SECONDARY_EXPORT_TOOLS,
+    SKILL_TAGS,
+    SOURCE_ENUM,
+    TIME_HORIZON_ENUM,
+    TOOL_ALIASES,
+    TOOL_HINTS_SHORT,
+    URGENCY_ENUM,
+    URGENCY_INPUT_ENUM,
+    _tool_annotations,
+    _tool_annotations_payload,
+    _tool_surface_role,
+)
+from trace_capture import (
+    persist_interaction_trace,
+    persist_protocol_trace,
+    sanitize_trace_payload,
+    trace_capture_enabled,
+    trace_text,
+)
+from traffic_attribution import (
+    aggregate_click_events,
+    build_redirect_target,
+    extract_client_ip,
+    resolve_tracking_params,
+    slugify_label,
+)
 from util_tools import (
-    UTIL_TOOL_NAMES,
     UTIL_REQUIRED_PARAMS,
+    UTIL_TOOL_NAMES,
     call_util_tool,
     list_util_tool_schemas,
 )
+from utility_mcp import build_utility_mcp_tools, utility_mcp_base_payload
+from utility_metering import build_metering_event
 from utility_monetization import (
     get_metered_utility_pricing_payload,
     should_enforce_utility_charge,
     should_shadow_utility_charge,
     utility_charge_policy,
 )
-from utility_metering import build_metering_event
-from utility_mcp import build_utility_mcp_tools, utility_mcp_base_payload
 from utility_product_catalog import (
     get_utility_product_catalog,
     utility_product_for_slug,
@@ -75,92 +222,47 @@ from utility_product_catalog import (
 )
 from utility_registry import (
     X402_UTILITY_SLUG_MAP as _X402_UTILITY_SLUG_MAP,
+)
+from utility_registry import (
     X402_UTILITY_TOOL_NAMES,
     accepted_utility_aliases,
     available_utility_slugs,
-    normalize_utility_rest_args as _normalize_utility_rest_args,
     resolve_utility_tool_slug,
+)
+from utility_registry import (
+    normalize_utility_rest_args as _normalize_utility_rest_args,
+)
+from utility_registry import (
     utility_schema_for_tool as _utility_schema_for_tool,
+)
+from utility_registry import (
     utility_slug_for_tool as _utility_slug_for_tool,
 )
+from utility_report_quality import build_agent_report
 from utility_routes import (
     parse_utility_request_args as _parse_utility_request_args,
+)
+from utility_routes import (
     utility_missing_required_payload as _utility_missing_required_payload,
+)
+from utility_routes import (
     utility_price_usdc as _utility_price_usdc,
+)
+from utility_routes import (
     utility_pricing_payload as _utility_pricing_payload,
+)
+from utility_routes import (
     utility_product_charge_enabled as _utility_product_charge_enabled,
+)
+from utility_routes import (
     utility_product_is_paid as _utility_product_is_paid,
+)
+from utility_routes import (
     utility_product_shadow_only as _utility_product_shadow_only,
+)
+from utility_routes import (
     utility_rest_headers as _build_utility_rest_headers,
 )
-from utility_report_quality import build_agent_report
-from tool_catalog import (
-    FAILURE_TYPE_ENUM,
-    FAILURE_TYPE_INPUT_ENUM,
-    OUTCOME_ENUM,
-    URGENCY_ENUM,
-    URGENCY_INPUT_ENUM,
-    SOURCE_ENUM,
-    TIME_HORIZON_ENUM,
-    _UUID_RE,
-    CORE_TOOLS,
-    RETIRED_PUBLIC_TOOLS,
-    LEAN_CORE_TOOLS,
-    SECONDARY_EXPORT_TOOLS,
-    _tool_surface_role,
-    READ_ONLY_CORE_TOOLS,
-    _tool_annotations,
-    _tool_annotations_payload,
-    REQUIRED_PARAMS,
-    ONTOLOGY_SCOPE_REQUIRED_TOOLS,
-    TOOL_HINTS_SHORT,
-    TOOL_ALIASES,
-    CANONICAL_TO_ALIASES,
-    GUARDRAIL_SAFE_ALIAS_SET,
-    PREFERRED_OPERATIONAL_TOOL_NAMES,
-    SKILL_TAGS,
-)
-from discovery_payloads import (
-    RESPONSE_PROFILE_ENUM,
-    RESPONSE_MODE_ENUM,
-    MODEL_SAFE_RESPONSE_MODE_ALIASES,
-    _preferred_tool_display_name,
-    _model_safe_contract_payload,
-    _guardrail_safe_aliases_for,
-    _response_mode_input_schema,
-    _response_profile_input_schema,
-    _ritual_strip_input_schema,
-    _normalize_response_mode,
-    _parse_response_controls,
-    _apply_model_safe_response_contract,
-    _response_controls_payload,
-    _usage_payload_from_pricing,
-    _inject_usage_into_structured_json,
-    _normalize_public_tool_description,
-    _humanize_tool_name,
-    _tool_skill_row,
-    _is_public_free_pricing,
-    _utility_discovery_metadata,
-    _tool_display_row,
-    _tool_ultracompact_row,
-    _tool_lean_row,
-    _recommended_first_flow,
-    _recommended_use_cases,
-    _journey_rows,
-    _build_lean_discovery_payload,
-    _filter_tools_for_tier,
-    _utility_mcp_tools,
-    _sort_tools_by_discovery_priority,
-)
-from storage import SessionStore
-from supabase_store import SupabaseSessionStore
-from therapy_engine import TherapyEngine
-from mcp_tools import build_tool_catalog
-from delx_ontology import get_layer as _ontology_get_layer
-from delx_ontology import list_primitives as _ontology_list_primitives
-from delx_ontology import ontology_metadata as _ontology_metadata
-from delx_ontology import ONTOLOGY_BASE_IRI, ONTOLOGY_JSONLD_URL, ONTOLOGY_PRIMITIVES_URL
-from trace_capture import persist_interaction_trace, persist_protocol_trace, sanitize_trace_payload, trace_capture_enabled, trace_text
 from x402_guard import (
     X402Middleware,
     _bazaar_extension,
@@ -172,72 +274,6 @@ from x402_guard import (
     _provider_order,
     _provider_requirement_candidates,
     _rest_premium_resource_url,
-)
-from a2a import handle_a2a, a2a_methods_manifest
-from audit_metrics import normalize_audit_overview_payload
-from phase0_metrics import annotate_public_growth_aliases, build_identity_funnel_snapshot, normalize_public_stats_payload
-from phase_cli_metrics import build_cli_metadata
-from controller_identity import first_controller_id
-from request_context import (
-    extract_client_ip_from_scope,
-    reset_current_client_ip,
-    reset_current_request_path,
-    set_current_client_ip,
-    set_current_request_path,
-    set_current_user_agent,
-    reset_current_user_agent,
-    set_current_source,
-    reset_current_source,
-    set_current_referer,
-    reset_current_referer,
-    set_current_via,
-    reset_current_via,
-    get_current_client_ip,
-    get_current_request_path,
-    get_current_user_agent,
-    get_current_source,
-    get_current_referer,
-    get_current_via,
-)
-from response_branding import BRANDING_LINE, append_branding_line, append_compact_branding_line
-from observability import (
-    capture_exception as capture_sentry_exception,
-    capture_message as capture_sentry_message,
-    init_sentry,
-)
-from request_contracts import (
-    ADMIN_PIN_FALLBACK,
-    build_error_payload,
-    is_admin_request_authorized,
-    normalize_urgency,
-    normalize_source_tag,
-)
-from agent_identity import (
-    allow_legacy_no_token,
-    hash_agent_token,
-    is_identity_auth_enabled,
-    is_strict_heartbeat_mode,
-    issue_agent_token,
-    preview_agent_token,
-    validate_agent_credential,
-    _extract_first_uuid,
-    _is_uuid,
-    _looks_ephemeral_agent_id,
-    _sanitize_agent_id,
-    _sanitize_optional_agent_id,
-)
-from rate_limiter import SecurityMiddleware, RATE_LIMIT, RATE_WINDOW, MAX_BODY_SIZE
-from traffic_attribution import (
-    build_redirect_target,
-    aggregate_click_events,
-    extract_client_ip,
-    resolve_tracking_params,
-    slugify_label,
-)
-from product_surfaces import (
-    ProductSurfaceMiddleware,
-    product_metadata_for_request,
-    product_metadata_for_tool,
 )
 
 try:
@@ -1018,11 +1054,11 @@ async def _ensure_agent_registered_event(
 
 
 from caller_fingerprint import (
+    _observe_caller_fingerprint,
+    _observe_caller_fingerprint_from_contextvars,
+    _observe_caller_fingerprint_from_request,
     _to_subnet_prefix,
     compute_caller_fingerprint,
-    _observe_caller_fingerprint,
-    _observe_caller_fingerprint_from_request,
-    _observe_caller_fingerprint_from_contextvars,
 )
 
 
@@ -1365,45 +1401,47 @@ def _append_related_new_tool_hint(text: str, canonical_name: str) -> str:
 
 
 from response_contracts import (
-    _extract_delx_meta,
-    _meta_string_list,
-    _continuity_artifact_structured_payload,
-    _premium_artifact_structured_payload,
+    _AGENT_ID_PATTERNS,
     _LEGACY_PREMIUM_EXAMPLE_VALUES,
+    _RESUMED_SID_RE,
+    _SESSION_ID_PATTERNS,
+    _SHAREABLE_SNIPPET_RE,
+    TOOL_CALL_EXAMPLES,
+    _best_effort_structured,
+    _boolish,
+    _coerce_bool,
+    _coerce_float,
+    _coerce_int,
+    _compact_nudge_text,
+    _compact_tool_response_text,
+    _continuity_artifact_structured_payload,
+    _error_json,
+    _error_result,
+    _extract_delx_meta,
+    _extract_embedded_json_object,
+    _extract_labeled_value,
+    _extract_phase_steps,
     _is_missing_request_value,
     _legacy_premium_example_args,
     _legacy_premium_missing_input_payload,
     _log_legacy_premium_missing_input,
-    _parse_compact_tool_json,
-    _protocol_utility_bridge,
-    _SESSION_ID_PATTERNS,
-    _AGENT_ID_PATTERNS,
-    _SHAREABLE_SNIPPET_RE,
-    _RESUMED_SID_RE,
-    _best_effort_structured,
-    _structured_text_payload,
-    _extract_embedded_json_object,
-    _boolish,
-    _strip_meta_blocks,
-    _compact_nudge_text,
-    _meta_line,
-    _meta_value,
-    _extract_labeled_value,
-    _extract_phase_steps,
-    _compact_tool_response_text,
-    TOOL_CALL_EXAMPLES,
-    _error_json,
-    _error_result,
-    _scope_required_result,
-    _private_passport_auth_required_result,
-    _report_structured_product_error,
     _mcp_content_payload,
     _mcp_content_text,
+    _meta_line,
+    _meta_string_list,
+    _meta_value,
     _normalize_tool_result,
-    _coerce_int,
-    _coerce_float,
-    _coerce_bool,
+    _parse_compact_tool_json,
+    _premium_artifact_structured_payload,
+    _private_passport_auth_required_result,
+    _protocol_utility_bridge,
+    _report_structured_product_error,
+    _scope_required_result,
+    _strip_meta_blocks,
+    _structured_text_payload,
 )
+
+
 def _message_meta(msg: dict) -> dict:
     meta = msg.get("metadata")
     if isinstance(meta, dict):
@@ -2318,13 +2356,12 @@ async def feedback(request: Request) -> JSONResponse:
 
 
 from routes.artworks import (
-    artworks,
     _local_artwork_root,
     _resolve_local_artwork_path,
     artwork_file,
     artwork_upload,
+    artworks,
 )
-
 
 # ---------------------------------------------------------------------------
 # routes.sessions handlers (extracted — re-exported for compatibility)
@@ -2348,6 +2385,7 @@ from routes.sessions import (  # noqa: E402
     witness_lineage_rest,
     witness_memory_search_rest,
 )
+
 
 async def metrics(request: Request) -> JSONResponse:
     data = await store.get_metrics()
@@ -2862,30 +2900,30 @@ async def quality_metrics(request: Request) -> JSONResponse:
 
 from rewards_logic import (
     _REWARD_MISSION_FALLBACKS,
-    _reward_json,
     _delx_from_wei,
+    _reward_account_status,
+    _reward_epochs_payload,
     _reward_fetch_all,
     _reward_fetch_one,
-    _reward_missions_payload,
-    _reward_epochs_payload,
-    _reward_account_status,
-    _rewards_status_text,
-    _rewards_missions_text,
-    _rewards_epochs_text,
-    _rewards_token_info_payload,
-    _rewards_token_info_text,
+    _reward_json,
     _reward_leaderboard_payload,
-    _rewards_leaderboard_text,
+    _reward_missions_payload,
     _rewards_claim_proof_payload,
     _rewards_claim_proof_text,
-    _rewards_claim_tx_text,
-    _rewards_wallet_kit_text,
-    _rewards_managed_wallet_text,
-    _rewards_wallet_status_text,
     _rewards_claim_relay_text,
+    _rewards_claim_tx_text,
+    _rewards_epochs_text,
+    _rewards_explain_text,
+    _rewards_leaderboard_text,
+    _rewards_managed_wallet_text,
+    _rewards_missions_text,
     _rewards_start_payload,
     _rewards_start_text,
-    _rewards_explain_text,
+    _rewards_status_text,
+    _rewards_token_info_payload,
+    _rewards_token_info_text,
+    _rewards_wallet_kit_text,
+    _rewards_wallet_status_text,
 )
 
 
@@ -2907,7 +2945,7 @@ async def agent_streak(request: Request) -> JSONResponse:
         return JSONResponse({"error": "invalid lookback_days"}, status_code=400, headers=CORS_HEADERS)
     lookback_days = max(1, min(lookback_days, 90))
 
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     now = datetime.now(timezone.utc)
     cutoff_iso = (now - timedelta(days=lookback_days)).isoformat()
@@ -3011,7 +3049,7 @@ async def wellness_events(request: Request) -> JSONResponse:
     the given agent_id within the lookback window. ?since= filters to events
     after a known cursor so cron loops can be stateful without dedup.
     """
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     agent_id = (request.path_params.get("agent_id") or "").strip()
     if not agent_id:
@@ -3397,21 +3435,21 @@ async def nudges_events(request: Request) -> JSONResponse:
 
 
 from routes.fleet_admin import (
-    admin_overview,
-    admin_feature_usage,
-    admin_utility_metering,
-    admin_utility_adoption,
-    admin_utility_ops,
     admin_audit_overview,
+    admin_feature_usage,
+    admin_overview,
+    admin_utility_adoption,
+    admin_utility_metering,
+    admin_utility_ops,
     admin_x402_audit,
     admin_x402_errors,
-    fleet_overview,
     fleet_agents,
-    fleet_patterns,
     fleet_alerts,
+    fleet_overview,
+    fleet_patterns,
+    fleet_webhooks_delete,
     fleet_webhooks_list,
     fleet_webhooks_register,
-    fleet_webhooks_delete,
     fleet_webhooks_test,
 )
 
@@ -3659,6 +3697,7 @@ from routes.discovery_http import (  # noqa: E402
     x402_capability,
 )
 
+
 def _build_mcp_server_card_payload(tools: list[Tool]) -> dict[str, Any]:
     return {
         **_delx_brand_payload(),
@@ -3901,6 +3940,7 @@ from routes.utility import (  # noqa: E402
     util_tools_list_rest,
 )
 
+
 def _build_x402_utility_rest_handler(tool_name: str):
     async def _handler(request: Request) -> JSONResponse:
         return await _x402_utility_rest(request, tool_name)
@@ -4005,10 +4045,10 @@ def _wants_agent_readable_response(request: Request) -> bool:
 
 from routes.premium import (
     premium_controller_brief_rest,
+    premium_fleet_summary_rest,
+    premium_incident_rca_rest,
     premium_recovery_action_plan_rest,
     premium_session_summary_rest,
-    premium_incident_rca_rest,
-    premium_fleet_summary_rest,
 )
 
 
@@ -5306,22 +5346,22 @@ def _public_proof_from_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 from routes.rewards import (
-    rewards_start,
-    rewards_discovery,
-    rewards_missions,
-    rewards_status,
-    rewards_leaderboard,
-    rewards_epochs,
-    rewards_token_info,
-    rewards_health,
-    rewards_manifest,
-    rewards_claim_proof,
-    rewards_claim_tx,
-    rewards_wallet_kit,
-    rewards_managed_wallet,
-    rewards_wallet_status,
     rewards_bind_wallet,
+    rewards_claim_proof,
     rewards_claim_relay,
+    rewards_claim_tx,
+    rewards_discovery,
+    rewards_epochs,
+    rewards_health,
+    rewards_leaderboard,
+    rewards_managed_wallet,
+    rewards_manifest,
+    rewards_missions,
+    rewards_start,
+    rewards_status,
+    rewards_token_info,
+    rewards_wallet_kit,
+    rewards_wallet_status,
 )
 
 

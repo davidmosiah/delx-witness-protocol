@@ -1,11 +1,11 @@
 """Utility REST handlers (extracted from server.py, move-only)."""
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+
 
 def _server():
     import server as server_mod

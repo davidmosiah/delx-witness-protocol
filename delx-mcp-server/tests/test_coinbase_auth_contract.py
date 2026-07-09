@@ -2,15 +2,15 @@ import sys
 import unittest
 from pathlib import Path
 
+import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-import jwt
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import config as config_mod
-from config import x402_provider_registry
 from coinbase_auth import build_cdp_jwt, build_coinbase_auth_headers
+from config import x402_provider_registry
 
 
 class CoinbaseAuthContractTests(unittest.TestCase):

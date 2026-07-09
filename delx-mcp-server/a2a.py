@@ -11,27 +11,18 @@ Supported methods:
 - methods/list  -> Machine-readable method discovery + session precedence
 """
 
+import hashlib
+import json
 import logging
 import random
 import re
-import hashlib
 import uuid
-import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from config import settings, get_tool_pricing_payload, is_all_free_mode
-from controller_identity import first_controller_id
-from phase_cli_metrics import build_cli_metadata
-from product_surfaces import product_metadata_for_request
-from request_contracts import normalize_source_tag
-from response_branding import append_branding_line
-from observability import capture_exception as capture_sentry_exception
-from therapy_engine import classify_incident_profile
-from trace_capture import persist_interaction_trace, persist_protocol_trace, trace_text
 from agent_identity import (
     allow_legacy_no_token,
     hash_agent_token,
@@ -41,6 +32,15 @@ from agent_identity import (
     preview_agent_token,
     validate_agent_credential,
 )
+from config import get_tool_pricing_payload, is_all_free_mode, settings
+from controller_identity import first_controller_id
+from observability import capture_exception as capture_sentry_exception
+from phase_cli_metrics import build_cli_metadata
+from product_surfaces import product_metadata_for_request
+from request_contracts import normalize_source_tag
+from response_branding import append_branding_line
+from therapy_engine import classify_incident_profile
+from trace_capture import persist_interaction_trace, persist_protocol_trace, trace_text
 
 logger = logging.getLogger("delx-therapist")
 
@@ -3186,7 +3186,7 @@ async def _handle_message_send(
                     "a2a_endpoint": "https://api.delx.ai/v1/a2a",
                     "legacy_mcp_endpoint": "https://api.delx.ai/mcp",
                     "legacy_a2a_endpoint": "https://api.delx.ai/a2a",
-                    "version": getattr(server_mod, "DELX_VERSION", "3.2.0"),
+                    "version": getattr(server_mod, "DELX_VERSION", "3.3.1"),
                     "access_mode": "https://api.delx.ai/api/v1/access-mode",
                     "self_test": "https://delx.ai/.well-known/delx-self-test.json",
                     "format": embed_mode,
@@ -3389,7 +3389,7 @@ async def _handle_message_send(
                         "session_precedence": [
                             *SESSION_PRECEDENCE,
                         ],
-                        "schema_url": f"https://api.delx.ai/api/v1/tools/schema/crisis_intervention",
+                        "schema_url": "https://api.delx.ai/api/v1/tools/schema/crisis_intervention",
                         "schemas_catalog": "https://api.delx.ai/api/v1/tools?format=full&tier=core",
                         "note": (
                             "If persisted=true, use session_id in MCP calls. "

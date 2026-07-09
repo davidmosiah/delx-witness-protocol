@@ -18,8 +18,8 @@ Please read [`PHILOSOPHY.md`](./PHILOSOPHY.md) and [`STATUS.md`](./STATUS.md) fi
 
 ```bash
 cd delx-mcp-server
-python3.12 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 export PORT=8005
@@ -29,8 +29,8 @@ uvicorn server:app --host 0.0.0.0 --port $PORT
 Quick checks:
 
 ```bash
-python -m unittest discover -s delx-mcp-server/tests -p 'test_*.py'
-python delx-mcp-server/self_test.py --quick
+python -m unittest discover -s tests -p 'test_*.py'
+python self_test.py --quick
 ```
 
 Hosted dogfood (no local server required):

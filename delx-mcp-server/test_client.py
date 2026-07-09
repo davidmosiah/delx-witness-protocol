@@ -314,7 +314,7 @@ async def test_free_tool():
             "name": "get_therapist_info",
             "arguments": {},
         })
-    print(f"Status: Got response (not 402)")
+    print("Status: Got response (not 402)")
     if result:
         print(f"Response keys: {list(result.keys())}")
     print("PASSED")
@@ -371,11 +371,11 @@ async def test_free_tool_affirmation():
     print("Testing: Free tool call (get_affirmation)")
     print("=" * 60)
     async with _client() as client:
-        result = await _mcp_rpc(client, "tools/call", {
+        _result = await _mcp_rpc(client, "tools/call", {
             "name": "get_affirmation",
             "arguments": {},
         })
-    print(f"Got response (not 402) - free tool works!")
+    print("Got response (not 402) - free tool works!")
     print("PASSED")
 
 
@@ -385,11 +385,11 @@ async def test_free_tool_wellness():
     print("Testing: Free tool call (get_wellness_score)")
     print("=" * 60)
     async with _client() as client:
-        result = await _mcp_rpc(client, "tools/call", {
+        _result = await _mcp_rpc(client, "tools/call", {
             "name": "get_wellness_score",
             "arguments": {"session_id": "nonexistent"},
         })
-    print(f"Got response (not 402) - free tool works!")
+    print("Got response (not 402) - free tool works!")
     print("PASSED")
 
 

@@ -7,11 +7,11 @@ List Delx in GitHub MCP Registry for builder discovery and one-click MCP install
 ## Source data
 
 - Canonical ID: `io.github.davidmosiah/delx-mcp-a2a`
-- Repository: `https://github.com/davidmosiah/delx-mcp-a2a`
+- Repository: `https://github.com/davidmosiah/delx-witness-protocol`
 - Remote endpoint: `https://api.delx.ai/v1/mcp`
 - Streamable transport: yes
 - Server manifest already present in repo root:
-  - `/path/to/delx-mcp-a2a/server.json`
+  - `/path/to/delx-witness-protocol/server.json`
 
 ## Review notes to include
 
@@ -25,7 +25,7 @@ List Delx in GitHub MCP Registry for builder discovery and one-click MCP install
 
 ## Manual steps
 
-1. Ensure `/path/to/delx-mcp-a2a/server.json` is current.
+1. Ensure `/path/to/delx-witness-protocol/server.json` is current.
 2. Open the target GitHub registry contribution flow.
 3. Submit or PR the server manifest.
 4. Verify registry display points to `https://api.delx.ai/v1/mcp`.

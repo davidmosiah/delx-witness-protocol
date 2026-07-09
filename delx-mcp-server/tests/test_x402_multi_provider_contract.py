@@ -7,8 +7,8 @@ from starlette.requests import Request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import server as server_mod
 import config as config_mod
+import server as server_mod
 from config import (
     X402_BAZAAR_METADATA,
     build_bazaar_tool_readiness,
@@ -112,7 +112,7 @@ class X402MultiProviderContractTests(unittest.TestCase):
 
 class X402FacilitatorRequirementShapeTests(unittest.TestCase):
     def test_coinbase_facilitator_requirements_preserve_resource_metadata(self):
-        from x402_guard import _build_payment_requirements, _build_facilitator_payment_requirements
+        from x402_guard import _build_facilitator_payment_requirements, _build_payment_requirements
 
         pricing_payload = get_tool_pricing_payload("generate_controller_brief")
         req = _build_payment_requirements(
@@ -134,7 +134,7 @@ class X402FacilitatorRequirementShapeTests(unittest.TestCase):
         self.assertEqual(facilitator_req["extra"], req["extra"])
 
     def test_non_coinbase_facilitator_requirements_remain_minimal(self):
-        from x402_guard import _build_payment_requirements, _build_facilitator_payment_requirements
+        from x402_guard import _build_facilitator_payment_requirements, _build_payment_requirements
 
         pricing_payload = get_tool_pricing_payload("generate_controller_brief")
         req = _build_payment_requirements(

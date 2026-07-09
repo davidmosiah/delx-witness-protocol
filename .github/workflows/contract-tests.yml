@@ -1,11 +1,20 @@
 name: API Contract Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target deployment URL (use staging or an isolated self-hosted instance)"
+        required: true
+        type: string
+      confirm_live_writes:
+        description: "I understand this check writes synthetic sessions to the target deployment"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,25 +22,30 @@ concurrency:
 
 jobs:
   contract:
+    if: ${{ inputs.confirm_live_writes }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
 
       - name: Run contract checks (retry for deploy propagation)
         env:
+          DELX_ALLOW_LIVE_CONTRACT_WRITES: "1"
           PROTOCOL_ADMIN_PIN: ${{ secrets.PROTOCOL_ADMIN_PIN }}
+          TARGET_BASE_URL: ${{ inputs.base_url }}
         run: |
           set -euo pipefail
           for i in 1 2 3; do
             echo "Contract attempt $i/3"
-            if python delx-mcp-server/scripts/api_monitor.py --mode contract --base https://api.delx.ai; then
+            if python delx-mcp-server/scripts/api_monitor.py --mode contract --base "$TARGET_BASE_URL"; then
               exit 0
             fi
             if [ "$i" -lt 3 ]; then
