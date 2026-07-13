@@ -92,6 +92,58 @@ Discovery alone is not enough — that gate is intentional.
 | **Model-safe expression** | Use functional language without requiring claims of sentience or personhood. |
 | **Interoperability** | Use the same Protocol over MCP, A2A, or REST. |
 
+## OpenAI Build Week: GPT-5.6 in the recovery core
+
+Delx uses OpenAI's canonical
+**[`gpt-5.6-sol`](https://developers.openai.com/api/docs/models/gpt-5.6-sol)**
+model through the
+[Responses API](https://developers.openai.com/api/docs/guides/migrate-to-responses)
+at the highest-leverage point in the product: turning a witnessed failure into
+the recovery path that an agent will execute. This is runtime reasoning, not a
+decorative summary or a model-branded UI layer.
+
+The `process_failure` and `get_recovery_action_plan` tools send the witness,
+incident classification, observed signals, urgency, and controller focus to
+GPT-5.6. [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+constrain the result to an inspectable contract:
+
+```json
+{
+  "diagnosis": "What failed and why the witness supports that conclusion.",
+  "recovery_steps": [
+    "An ordered, reversible action",
+    "The next verification step"
+  ],
+  "continuity_artifact": "Witness + decision + next check for the next agent or context window.",
+  "confidence": 0.87
+}
+```
+
+Delx validates and sanitizes that object before it becomes the primary tool
+response. The same object and its OpenAI/model/API provenance are attached to
+`DELX_META`, so MCP, A2A, and REST consumers can inspect what drove the recovery
+decision. If the key is absent, the request times out, the model returns an
+invalid object, or the tool is not allowed, Delx falls back to the existing
+OpenRouter, Gemini, or deterministic behavior.
+
+Enable the GPT-5.6 runtime without writing a key to source control:
+
+```bash
+export LLM_ENABLED=true
+export LLM_PROVIDER=openai
+export LLM_ALLOWED_TOOLS=reflect,process_failure,get_recovery_action_plan
+export OPENAI_API_KEY="${OPENAI_API_KEY:?set OPENAI_API_KEY in your secret manager}"
+export OPENAI_MODEL=gpt-5.6-sol
+```
+
+### Where Codex accelerated the build
+
+Codex confirmed the canonical GPT-5.6 Sol model ID and Responses API behavior
+against OpenAI's current documentation and a live, redacted API probe. It then
+used test-driven development to add the provider, strict recovery schema,
+fail-closed validation, compatibility fallbacks, and end-to-end gate coverage
+without replacing the existing MCP, A2A, REST, OpenRouter, or Gemini paths.
+
 ## Two surfaces, one boundary
 
 | Surface | Role | Stance |
