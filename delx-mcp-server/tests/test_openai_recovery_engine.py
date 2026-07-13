@@ -325,6 +325,34 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("GPT-5.6", result)
         engine._llm_generate_openai.assert_not_awaited()
 
+    async def test_failed_openai_recovery_skips_secondary_llm_call(self):
+        engine, client, _ = await self._build_engine()
+        engine._llm_generate_openai = AsyncMock(return_value=None)
+        engine._llm_generate = AsyncMock(side_effect=AssertionError("must not call the secondary LLM"))
+        try:
+            with (
+                patch.object(engine_module, "LLM_ENABLED", True),
+                patch.object(engine_module, "LLM_PROVIDER", "openai"),
+                patch.object(
+                    engine_module,
+                    "LLM_ALLOWED_TOOLS",
+                    frozenset({"process_failure", "get_recovery_action_plan"}),
+                ),
+                patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
+            ):
+                result = await engine.process_failure(
+                    "session-build-week",
+                    "rate_limit",
+                    "429 retry storm after deploy with quota exceeded",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertTrue(result.startswith("Processing: rate_limit"))
+        self.assertNotIn("GPT-5.6 STRUCTURED RECOVERY", result)
+        engine._llm_generate_openai.assert_awaited_once()
+        engine._llm_generate.assert_not_awaited()
+
 
 if __name__ == "__main__":
     unittest.main()
