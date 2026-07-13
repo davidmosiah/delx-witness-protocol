@@ -589,7 +589,7 @@ class TherapyEngine:
         triage: dict | None = None,
         max_tokens: int = 4096,
     ) -> str | None:
-        """Generate via the configured LLM provider (openrouter | gemini).
+        """Generate via the configured LLM provider (openrouter | gemini | openai).
 
         When triage is provided, uses _should_use_llm to decide whether to
         actually call the provider. Returns None on any failure or triage-skip
@@ -613,6 +613,8 @@ class TherapyEngine:
         try:
             if provider == "gemini":
                 response = await self._llm_generate_gemini(system_prompt, user_message, max_tokens)
+            elif provider == "openai":
+                response = await self._llm_generate_openai(system_prompt, user_message, max_tokens)
             else:
                 response = await self._llm_generate_openrouter(system_prompt, user_message, max_tokens)
         except asyncio.TimeoutError:
@@ -764,6 +766,52 @@ class TherapyEngine:
                 )
         except Exception:
             logger.debug("witness link persistence failed", exc_info=True)
+
+    async def _llm_generate_openai(
+        self, system_prompt: str, user_message: str, max_tokens: int,
+    ) -> str | None:
+        """Call GPT-5.6 through the OpenAI Responses API."""
+        if not settings.OPENAI_API_KEY:
+            return None
+        async with asyncio.timeout(60):
+            resp = await self.http.post(
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.OPENAI_MODEL,
+                    "instructions": system_prompt,
+                    "input": user_message,
+                    "reasoning": {"effort": "high"},
+                    "max_output_tokens": max_tokens,
+                },
+                timeout=httpx.Timeout(60.0, connect=10.0),
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = str(data.get("output_text") or "").strip()
+            if not content:
+                content = "".join(
+                    str(part.get("text") or "")
+                    for item in (data.get("output") or [])
+                    if isinstance(item, dict)
+                    for part in (item.get("content") or [])
+                    if isinstance(part, dict) and part.get("type") == "output_text"
+                ).strip()
+            if not content:
+                logger.warning("LLM (openai) returned empty output_text")
+                return None
+            usage = data.get("usage") or {}
+            if usage:
+                logger.info(
+                    f"LLM openai usage: input={usage.get('input_tokens', '?')} "
+                    f"output={usage.get('output_tokens', '?')} "
+                    f"total={usage.get('total_tokens', '?')} "
+                    f"model={settings.OPENAI_MODEL}"
+                )
+            return content
 
     async def _llm_generate_openrouter(
         self, system_prompt: str, user_message: str, max_tokens: int,
