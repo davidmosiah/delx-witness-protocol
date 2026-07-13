@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     DELX_WALLET: str = "0x9f8bd9875b3E0b632a24A3A7C73f7787175e73A2"
 
     # LLM
-    # Provider selection: "openrouter" | "gemini" (default openrouter for backward compat)
+    # Provider selection: "openrouter" | "gemini" | "openai"
+    # Keep OpenRouter as the default for backward compatibility.
     LLM_PROVIDER: str = "openrouter"
     LLM_ENABLED: bool = False
     # Triage: when True, LLM only fires when should_use_llm() detects depth signals.
@@ -53,6 +54,10 @@ class Settings(BaseSettings):
     # OpenRouter
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "moonshotai/kimi-k2.5"
+
+    # OpenAI Responses API (GPT-5.6 Sol canonical model ID)
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-5.6-sol"
 
     # Gemini (direct, free tier: 1500 req/day via AI Studio)
     GEMINI_API_KEY: str = ""
@@ -2226,12 +2231,15 @@ def monetization_policy() -> dict[str, object]:
 FREE_TOOLS: set[str] = {name for name, price in PRICING.items() if price == 0}
 
 # LLM toggle: keep explicit control via env var and require the selected provider key.
-# Default: disabled. Set LLM_ENABLED=true + provide GEMINI_API_KEY (or OPENROUTER_API_KEY).
+# Default: disabled. Set LLM_ENABLED=true + provide the selected provider key.
 # This keeps deterministic fallback responses active by default.
 _llm_provider = (settings.LLM_PROVIDER or "openrouter").strip().lower()
-_llm_key_present = (
-    bool(settings.GEMINI_API_KEY) if _llm_provider == "gemini" else bool(settings.OPENROUTER_API_KEY)
-)
+if _llm_provider == "gemini":
+    _llm_key_present = bool(settings.GEMINI_API_KEY)
+elif _llm_provider == "openai":
+    _llm_key_present = bool(settings.OPENAI_API_KEY)
+else:
+    _llm_key_present = bool(settings.OPENROUTER_API_KEY)
 LLM_ENABLED: bool = bool(settings.LLM_ENABLED and _llm_key_present)
 LLM_PROVIDER: str = _llm_provider
 LLM_TRIAGE_ENABLED: bool = bool(settings.LLM_TRIAGE_ENABLED)
