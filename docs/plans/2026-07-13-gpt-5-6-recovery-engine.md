@@ -1,7 +1,5 @@
 # GPT-5.6 Recovery Engine Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
-
 **Goal:** Make GPT-5.6 Sol the structured reasoning engine for the Delx witness-to-recovery path while preserving deterministic, OpenRouter, and Gemini fallbacks.
 
 **Architecture:** Add OpenAI as a first-class HTTP provider through the Responses API, using the canonical `gpt-5.6-sol` model ID. When OpenAI is enabled and its key is present, `process_failure` and `get_recovery_action_plan` request a strict recovery JSON object (`diagnosis`, `recovery_steps`, `continuity_artifact`, `confidence`) and expose it in the tool response plus `DELX_META`; if the call or validation fails, the existing path runs unchanged.

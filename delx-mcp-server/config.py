@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     # When False, every wired tool call uses LLM (legacy behavior).
     LLM_TRIAGE_ENABLED: bool = True
     # Tool allowlist for LLM. Comma-separated. "" or "*" = all wired tools.
-    # GPT-5.6 recovery pilot plus the existing reflection path.
-    LLM_ALLOWED_TOOLS: str = "reflect,process_failure,get_recovery_action_plan"
+    # Pilot default: only reflect. Enable recovery tools explicitly when configuring GPT-5.6.
+    LLM_ALLOWED_TOOLS: str = "reflect"
 
     # OpenRouter
     OPENROUTER_API_KEY: str = ""
