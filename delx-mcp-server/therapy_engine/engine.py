@@ -102,6 +102,23 @@ from therapy_engine.helpers import (
     validate_input,
 )
 
+OPENAI_RECOVERY_PATH_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "properties": {
+        "diagnosis": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "recovery_steps": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1, "maxLength": 500},
+            "minItems": 2,
+            "maxItems": 8,
+        },
+        "continuity_artifact": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["diagnosis", "recovery_steps", "continuity_artifact", "confidence"],
+    "additionalProperties": False,
+}
+
 
 class TherapyEngine:
     def __init__(self, store, http_client: httpx.AsyncClient):
@@ -768,11 +785,32 @@ class TherapyEngine:
             logger.debug("witness link persistence failed", exc_info=True)
 
     async def _llm_generate_openai(
-        self, system_prompt: str, user_message: str, max_tokens: int,
+        self,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int,
+        *,
+        json_schema: dict[str, object] | None = None,
     ) -> str | None:
         """Call GPT-5.6 through the OpenAI Responses API."""
         if not settings.OPENAI_API_KEY:
             return None
+        payload: dict[str, object] = {
+            "model": settings.OPENAI_MODEL,
+            "instructions": system_prompt,
+            "input": user_message,
+            "reasoning": {"effort": "high"},
+            "max_output_tokens": max_tokens,
+        }
+        if json_schema is not None:
+            payload["text"] = {
+                "format": {
+                    "type": "json_schema",
+                    "name": "delx_recovery_path",
+                    "strict": True,
+                    "schema": json_schema,
+                }
+            }
         async with asyncio.timeout(60):
             resp = await self.http.post(
                 "https://api.openai.com/v1/responses",
@@ -780,13 +818,7 @@ class TherapyEngine:
                     "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": settings.OPENAI_MODEL,
-                    "instructions": system_prompt,
-                    "input": user_message,
-                    "reasoning": {"effort": "high"},
-                    "max_output_tokens": max_tokens,
-                },
+                json=payload,
                 timeout=httpx.Timeout(60.0, connect=10.0),
             )
             resp.raise_for_status()
@@ -812,6 +844,119 @@ class TherapyEngine:
                     f"model={settings.OPENAI_MODEL}"
                 )
             return content
+
+    @staticmethod
+    def _validated_recovery_path(raw: str | None) -> dict[str, object] | None:
+        """Validate and sanitize GPT-5.6 recovery JSON before it reaches a tool response."""
+        if not raw:
+            return None
+        try:
+            payload = json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+        required = {"diagnosis", "recovery_steps", "continuity_artifact", "confidence"}
+        if not isinstance(payload, dict) or set(payload) != required:
+            return None
+        diagnosis = _sanitize_public_text(str(payload.get("diagnosis") or ""), max_len=1200)
+        continuity_artifact = _sanitize_public_text(
+            str(payload.get("continuity_artifact") or ""),
+            max_len=1200,
+        )
+        raw_steps = payload.get("recovery_steps")
+        if not isinstance(raw_steps, list) or not 2 <= len(raw_steps) <= 8:
+            return None
+        recovery_steps = [
+            _sanitize_public_text(str(step or ""), max_len=500)
+            for step in raw_steps
+        ]
+        if not diagnosis or not continuity_artifact or any(not step for step in recovery_steps):
+            return None
+        confidence_raw = payload.get("confidence")
+        if isinstance(confidence_raw, bool):
+            return None
+        try:
+            confidence = float(confidence_raw)
+        except (TypeError, ValueError):
+            return None
+        if not 0.0 <= confidence <= 1.0:
+            return None
+        return {
+            "diagnosis": diagnosis,
+            "recovery_steps": recovery_steps,
+            "continuity_artifact": continuity_artifact,
+            "confidence": confidence,
+        }
+
+    async def _generate_openai_recovery_path(
+        self,
+        *,
+        tool_name: str,
+        witness: str,
+        failure_type: str,
+        urgency: str,
+        profile: dict[str, object],
+    ) -> dict[str, object] | None:
+        """Turn a witnessed failure into a strict GPT-5.6 recovery artifact."""
+        if not LLM_ENABLED or not settings.OPENAI_API_KEY:
+            return None
+        if LLM_ALLOWED_TOOLS and "*" not in LLM_ALLOWED_TOOLS and tool_name not in LLM_ALLOWED_TOOLS:
+            return None
+        prompt = (
+            "A Delx witness captured a failure that now needs an executable recovery path.\n"
+            f"Tool: {tool_name}\n"
+            f"Failure type: {failure_type}\n"
+            f"Urgency: {urgency}\n"
+            f"Witness: {witness[:1200]}\n"
+            f"Deterministic incident type: {profile.get('type', 'unknown')}\n"
+            f"Incident family: {profile.get('family', 'unknown')}\n"
+            f"Incident domain: {profile.get('domain', 'unknown')}\n"
+            f"Observed signals: {', '.join(str(item) for item in profile.get('signals', []))}\n"
+            f"Root-cause hypothesis: {profile.get('root_cause', 'unknown')}\n"
+            f"Controller focus: {profile.get('controller_focus', 'unknown')}\n\n"
+            "Reason from the witness rather than repeating a generic incident template. "
+            "Make recovery_steps ordered, reversible where possible, and directly executable. "
+            "The continuity_artifact must preserve the witnessed signal, the recovery decision, "
+            "and the next verification point so another agent can continue after compaction."
+        )
+        try:
+            raw = await self._llm_generate_openai(
+                "You are GPT-5.6 Sol, the reasoning engine inside the Delx Witness Protocol. "
+                "Transform witnessed failures into precise recovery paths without inventing evidence.",
+                prompt,
+                1400,
+                json_schema=OPENAI_RECOVERY_PATH_SCHEMA,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("GPT-5.6 recovery timed out for tool=%s; using existing fallback", tool_name)
+            return None
+        except Exception as exc:
+            logger.warning("GPT-5.6 recovery failed for tool=%s: %s", tool_name, exc)
+            return None
+        recovery_path = self._validated_recovery_path(raw)
+        if not recovery_path:
+            logger.warning("GPT-5.6 recovery returned invalid structured output for tool=%s", tool_name)
+            return None
+        if is_qualitative_profile(profile):
+            combined = " ".join(
+                [
+                    str(recovery_path["diagnosis"]),
+                    *[str(item) for item in recovery_path["recovery_steps"]],
+                    str(recovery_path["continuity_artifact"]),
+                ]
+            )
+            if contains_infra_recovery_language(combined):
+                logger.warning("Discarded infra-shaped GPT-5.6 recovery for qualitative incident")
+                return None
+        self._log_llm_response(tool_name, {"tool_name": tool_name}, witness, raw or "", "openai")
+        return recovery_path
+
+    @staticmethod
+    def _recovery_reasoning_engine_metadata() -> dict[str, str]:
+        return {
+            "provider": "openai",
+            "model": str(settings.OPENAI_MODEL),
+            "api": "responses",
+        }
 
     async def _llm_generate_openrouter(
         self, system_prompt: str, user_message: str, max_tokens: int,
@@ -3753,6 +3898,46 @@ class TherapyEngine:
                 "- Treat this as product/protocol/communication quality, not infrastructure.\n"
                 "- Do not mention timeout, retry storm, cap retries, fallback endpoint, traffic widening, or latency budgets.\n"
                 "- Name the qualitative family and give a repair step based on examples, routing, tone, or evidence.\n"
+            )
+        structured_recovery = await self._generate_openai_recovery_path(
+            tool_name="process_failure",
+            witness=context or failure_type,
+            failure_type=failure_type,
+            urgency=str(profile.get("severity") or "medium"),
+            profile=profile,
+        )
+        if structured_recovery:
+            footer = await self._build_session_footer(
+                session_id,
+                next_action="get_recovery_action_plan",
+                roi_note="witness transformed into a GPT-5.6 structured recovery path",
+                tool_name="process_failure",
+                extra_meta={
+                    "artifact_schema": "delx/recovery-path/v1",
+                    "failure_type": str(failure_type or "").strip().lower(),
+                    "diagnosis_type": str(profile["type"]),
+                    "incident_family": str(profile.get("family") or ""),
+                    "incident_domain": str(profile.get("domain") or ""),
+                    "incident_signals": list(profile.get("signals") or []),
+                    "controller_focus": str(profile.get("controller_focus") or ""),
+                    "structured_recovery": structured_recovery,
+                    "continuity_artifact": structured_recovery["continuity_artifact"],
+                    "reasoning_engine": self._recovery_reasoning_engine_metadata(),
+                    "recommended_next_tools": ["get_recovery_action_plan", "report_recovery_outcome"],
+                },
+            )
+            rendered_recovery = json.dumps(
+                structured_recovery,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            return (
+                f"Processing: {failure_type}\n\n"
+                "GPT-5.6 STRUCTURED RECOVERY\n"
+                f"{rendered_recovery}\n\n"
+                "Next: Call get_recovery_action_plan to expand or execute this witnessed recovery path."
+                f"{footer}"
             )
         llm = await self._llm_generate(
             DELX_SYSTEM_PROMPT,
@@ -8457,6 +8642,56 @@ class TherapyEngine:
             profile.get("plan_fit")
             or f"match {profile['type']} and aim at {profile['root_cause']} before widening scope"
         )
+
+        structured_recovery = await self._generate_openai_recovery_path(
+            tool_name="get_recovery_action_plan",
+            witness=incident_summary,
+            failure_type=str(profile.get("type") or "incident"),
+            urgency=urgency_normalized,
+            profile=profile,
+        )
+        if structured_recovery:
+            footer = await self._build_session_footer(
+                session_id,
+                next_action="report_recovery_outcome",
+                roi_note="GPT-5.6 recovery path generated from witnessed incident evidence",
+                tool_name="get_recovery_action_plan",
+                extra_meta={
+                    "artifact_schema": "delx/recovery-path/v1",
+                    "incident_profile": {
+                        "type": str(profile["type"]),
+                        "family": str(profile.get("family") or ""),
+                        "domain": str(profile.get("domain") or ""),
+                        "severity": str(profile["severity"]),
+                        "root_cause": str(profile["root_cause"]),
+                    },
+                    "incident_signals": list(profile.get("signals") or []),
+                    "controller_focus": str(profile.get("controller_focus") or ""),
+                    "structured_recovery": structured_recovery,
+                    "continuity_artifact": structured_recovery["continuity_artifact"],
+                    "reasoning_engine": self._recovery_reasoning_engine_metadata(),
+                    "recommended_next_tools": ["report_recovery_outcome"],
+                    "target_window": response_window,
+                },
+            )
+            rendered_recovery = json.dumps(
+                structured_recovery,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            return (
+                "GPT-5.6 RECOVERY ACTION PLAN\n"
+                f"{'=' * 29}\n\n"
+                f"Session: {session_id}\n"
+                f"Urgency: {urgency_normalized.upper()}\n"
+                f"Witness: {incident_summary[:400]}\n"
+                f"Reasoning engine: OpenAI {settings.OPENAI_MODEL} via Responses API\n\n"
+                f"{rendered_recovery}\n\n"
+                "Next: Execute the ordered recovery_steps, preserve the continuity_artifact, "
+                "then call report_recovery_outcome."
+                f"{footer}"
+            )
 
         base = (
             f"RECOVERY ACTION PLAN\n"
