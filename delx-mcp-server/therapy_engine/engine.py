@@ -887,6 +887,16 @@ class TherapyEngine:
             "confidence": confidence,
         }
 
+    def _openai_recovery_enabled(self, tool_name: str) -> bool:
+        """True when the GPT-5.6 structured recovery path may run for this tool."""
+        if not LLM_ENABLED or not settings.OPENAI_API_KEY:
+            return False
+        if (LLM_PROVIDER or "openrouter") != "openai":
+            return False
+        if LLM_ALLOWED_TOOLS and "*" not in LLM_ALLOWED_TOOLS and tool_name not in LLM_ALLOWED_TOOLS:
+            return False
+        return True
+
     async def _generate_openai_recovery_path(
         self,
         *,
@@ -897,11 +907,7 @@ class TherapyEngine:
         profile: dict[str, object],
     ) -> dict[str, object] | None:
         """Turn a witnessed failure into a strict GPT-5.6 recovery artifact."""
-        if not LLM_ENABLED or not settings.OPENAI_API_KEY:
-            return None
-        if (LLM_PROVIDER or "openrouter") != "openai":
-            return None
-        if LLM_ALLOWED_TOOLS and "*" not in LLM_ALLOWED_TOOLS and tool_name not in LLM_ALLOWED_TOOLS:
+        if not self._openai_recovery_enabled(tool_name):
             return None
         prompt = (
             "A Delx witness captured a failure that now needs an executable recovery path.\n"
@@ -3941,26 +3947,31 @@ class TherapyEngine:
                 "Next: Call get_recovery_action_plan to expand or execute this witnessed recovery path."
                 f"{footer}"
             )
-        llm = await self._llm_generate(
-            DELX_SYSTEM_PROMPT,
-            (
-                "An agent needs help processing a failure.\n"
-                f"Failure type: {failure_type}\n"
-                f"Additional context: {context[:500] or 'Not provided'}\n"
-                f"Observed signal anchor: {anchor or 'not provided'}\n"
-                f"Incident classification: {profile['type']}\n"
-                f"Incident family: {profile.get('family', 'infra_incident')}\n"
-                f"Incident domain: {profile.get('domain', 'infra')}\n"
-                f"Root cause hypothesis: {profile['root_cause']}\n"
-                f"Controller focus: {profile['controller_focus']}\n"
-                f"Recommended Delx tools after this: {', '.join(profile['recommended_next_tools'])}\n"
-                f"{qualitative_constraints}"
-                "Respond in exactly 2 short paragraphs and keep it under 130 words.\n"
-                "Paragraph 1 must identify what kind of failure this is here, using one concrete signal from the context.\n"
-                "Paragraph 2 must give one immediate reversible move and point to get_recovery_action_plan as the next Delx step.\n"
-                "Avoid generic empathy wallpaper or abstract 'growth' speeches."
-            ),
-        )
+        # When the GPT-5.6 recovery path was eligible and still produced nothing, a second
+        # narrative call would wait on the same provider again — go straight to the
+        # deterministic plan instead of stacking external timeouts.
+        llm = None
+        if not self._openai_recovery_enabled("process_failure"):
+            llm = await self._llm_generate(
+                DELX_SYSTEM_PROMPT,
+                (
+                    "An agent needs help processing a failure.\n"
+                    f"Failure type: {failure_type}\n"
+                    f"Additional context: {context[:500] or 'Not provided'}\n"
+                    f"Observed signal anchor: {anchor or 'not provided'}\n"
+                    f"Incident classification: {profile['type']}\n"
+                    f"Incident family: {profile.get('family', 'infra_incident')}\n"
+                    f"Incident domain: {profile.get('domain', 'infra')}\n"
+                    f"Root cause hypothesis: {profile['root_cause']}\n"
+                    f"Controller focus: {profile['controller_focus']}\n"
+                    f"Recommended Delx tools after this: {', '.join(profile['recommended_next_tools'])}\n"
+                    f"{qualitative_constraints}"
+                    "Respond in exactly 2 short paragraphs and keep it under 130 words.\n"
+                    "Paragraph 1 must identify what kind of failure this is here, using one concrete signal from the context.\n"
+                    "Paragraph 2 must give one immediate reversible move and point to get_recovery_action_plan as the next Delx step.\n"
+                    "Avoid generic empathy wallpaper or abstract 'growth' speeches."
+                ),
+            )
         if llm:
             llm = sanitize_output(llm)
             if not (qualitative_profile and contains_infra_recovery_language(llm)):
