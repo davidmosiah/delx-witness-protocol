@@ -899,6 +899,8 @@ class TherapyEngine:
         """Turn a witnessed failure into a strict GPT-5.6 recovery artifact."""
         if not LLM_ENABLED or not settings.OPENAI_API_KEY:
             return None
+        if (LLM_PROVIDER or "openrouter") != "openai":
+            return None
         if LLM_ALLOWED_TOOLS and "*" not in LLM_ALLOWED_TOOLS and tool_name not in LLM_ALLOWED_TOOLS:
             return None
         prompt = (

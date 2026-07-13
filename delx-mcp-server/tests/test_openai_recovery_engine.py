@@ -200,6 +200,7 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
                     "LLM_ALLOWED_TOOLS",
                     frozenset({"process_failure", "get_recovery_action_plan"}),
                 ),
+                patch.object(engine_module, "LLM_PROVIDER", "openai"),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
                 patch.object(engine_module.settings, "OPENAI_MODEL", "gpt-5.6-sol"),
             ):
@@ -232,6 +233,7 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
                     "LLM_ALLOWED_TOOLS",
                     frozenset({"process_failure", "get_recovery_action_plan"}),
                 ),
+                patch.object(engine_module, "LLM_PROVIDER", "openai"),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
                 patch.object(engine_module.settings, "OPENAI_MODEL", "gpt-5.6-sol"),
             ):
@@ -282,6 +284,7 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
                     "LLM_ALLOWED_TOOLS",
                     frozenset({"process_failure", "get_recovery_action_plan"}),
                 ),
+                patch.object(engine_module, "LLM_PROVIDER", "openai"),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
             ):
                 result = await engine.process_failure(
@@ -295,6 +298,32 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.startswith("Processing: rate_limit"))
         self.assertIn("Controller focus: quota discipline plus burst shaping", result)
         self.assertNotIn("GPT-5.6 STRUCTURED RECOVERY", result)
+
+    async def test_non_openai_provider_skips_gpt_5_6_recovery(self):
+        engine, client, _ = await self._build_engine()
+        engine._llm_generate_openai = AsyncMock(side_effect=AssertionError("must not call OpenAI"))
+        try:
+            with (
+                patch.object(engine_module, "LLM_ENABLED", True),
+                patch.object(engine_module, "LLM_PROVIDER", "gemini"),
+                patch.object(
+                    engine_module,
+                    "LLM_ALLOWED_TOOLS",
+                    frozenset({"process_failure", "get_recovery_action_plan"}),
+                ),
+                patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
+            ):
+                result = await engine.get_recovery_action_plan(
+                    "session-build-week",
+                    "429 retry storm after deploy with quota exceeded",
+                    urgency="high",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertTrue(result.startswith("RECOVERY ACTION PLAN"))
+        self.assertNotIn("GPT-5.6", result)
+        engine._llm_generate_openai.assert_not_awaited()
 
 
 if __name__ == "__main__":
