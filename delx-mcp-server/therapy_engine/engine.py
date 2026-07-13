@@ -923,7 +923,7 @@ class TherapyEngine:
                 "You are GPT-5.6 Sol, the reasoning engine inside the Delx Witness Protocol. "
                 "Transform witnessed failures into precise recovery paths without inventing evidence.",
                 prompt,
-                1400,
+                4096,
                 json_schema=OPENAI_RECOVERY_PATH_SCHEMA,
             )
         except asyncio.TimeoutError:
