@@ -52,6 +52,9 @@ class OpenAIProviderTests(unittest.IsolatedAsyncioTestCase):
     def test_openai_model_uses_canonical_gpt_5_6_sol_id(self):
         self.assertEqual(Settings().OPENAI_MODEL, "gpt-5.6-sol")
 
+    def test_default_allowlist_preserves_existing_reflect_pilot(self):
+        self.assertEqual(Settings().LLM_ALLOWED_TOOLS, "reflect")
+
     async def test_openai_provider_uses_responses_api_and_extracts_output_text(self):
         captured: dict[str, object] = {}
 
@@ -192,6 +195,11 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
         try:
             with (
                 patch.object(engine_module, "LLM_ENABLED", True),
+                patch.object(
+                    engine_module,
+                    "LLM_ALLOWED_TOOLS",
+                    frozenset({"process_failure", "get_recovery_action_plan"}),
+                ),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
                 patch.object(engine_module.settings, "OPENAI_MODEL", "gpt-5.6-sol"),
             ):
@@ -219,6 +227,11 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
         try:
             with (
                 patch.object(engine_module, "LLM_ENABLED", True),
+                patch.object(
+                    engine_module,
+                    "LLM_ALLOWED_TOOLS",
+                    frozenset({"process_failure", "get_recovery_action_plan"}),
+                ),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
                 patch.object(engine_module.settings, "OPENAI_MODEL", "gpt-5.6-sol"),
             ):
@@ -264,6 +277,11 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
         try:
             with (
                 patch.object(engine_module, "LLM_ENABLED", True),
+                patch.object(
+                    engine_module,
+                    "LLM_ALLOWED_TOOLS",
+                    frozenset({"process_failure", "get_recovery_action_plan"}),
+                ),
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
             ):
                 result = await engine.process_failure(
