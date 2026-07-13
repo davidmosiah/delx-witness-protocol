@@ -49,6 +49,11 @@ files = [
   "response_contracts.py",
   "caller_fingerprint.py",
 ]
+# Keep a directory invocation (`mypy .`) on the same Phase 0 scope. Without
+# this, the CLI path overrides `files` and pulls in the still-untyped runtime.
+exclude = [
+  '^(?!\.?/?$)(?!(?:\./)?(?:tool_catalog|discovery_payloads|response_contracts|caller_fingerprint)\.py$).*',
+]
 
 [[tool.mypy.overrides]]
 module = [
