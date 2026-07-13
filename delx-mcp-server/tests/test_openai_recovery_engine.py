@@ -211,6 +211,7 @@ class OpenAIRecoveryPathTests(unittest.IsolatedAsyncioTestCase):
             {"provider": "openai", "model": "gpt-5.6-sol", "api": "responses"},
         )
         engine._llm_generate_openai.assert_awaited_once()
+        self.assertEqual(engine._llm_generate_openai.await_args.args[2], 4096)
 
     async def test_recovery_action_plan_uses_gpt_5_6_as_primary_plan(self):
         engine, client, captured = await self._build_engine()
