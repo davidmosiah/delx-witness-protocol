@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.davidmosiah%2Fdelx-mcp-a2a.svg)](https://mcptoplist.com/server/io.github.davidmosiah%2Fdelx-mcp-a2a)
+
 <h1 align="center">Delx Witness Protocol</h1>
 
 <div align="center">
