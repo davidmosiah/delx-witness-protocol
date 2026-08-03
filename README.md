@@ -134,6 +134,8 @@ export LLM_PROVIDER=openai
 export LLM_ALLOWED_TOOLS=reflect,process_failure,get_recovery_action_plan
 export OPENAI_API_KEY="${OPENAI_API_KEY:?set OPENAI_API_KEY in your secret manager}"
 export OPENAI_MODEL=gpt-5.6-sol
+# Optional for high-reasoning workloads; defaults to 60 seconds.
+export OPENAI_TIMEOUT_SECONDS=120
 ```
 
 ### Where Codex accelerated the build

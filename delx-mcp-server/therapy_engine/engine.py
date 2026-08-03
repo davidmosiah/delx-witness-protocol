@@ -811,7 +811,8 @@ class TherapyEngine:
                     "schema": json_schema,
                 }
             }
-        async with asyncio.timeout(60):
+        timeout_seconds = settings.OPENAI_TIMEOUT_SECONDS
+        async with asyncio.timeout(timeout_seconds):
             resp = await self.http.post(
                 "https://api.openai.com/v1/responses",
                 headers={
@@ -819,7 +820,7 @@ class TherapyEngine:
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=httpx.Timeout(60.0, connect=10.0),
+                timeout=httpx.Timeout(timeout_seconds, connect=10.0),
             )
             resp.raise_for_status()
             data = resp.json()

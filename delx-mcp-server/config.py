@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # OpenAI Responses API (GPT-5.6 Sol canonical model ID)
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-5.6-sol"
+    OPENAI_TIMEOUT_SECONDS: float = 60.0
 
     # Gemini (direct, free tier: 1500 req/day via AI Studio)
     GEMINI_API_KEY: str = ""

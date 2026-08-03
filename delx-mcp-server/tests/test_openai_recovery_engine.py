@@ -52,6 +52,9 @@ class OpenAIProviderTests(unittest.IsolatedAsyncioTestCase):
     def test_openai_model_uses_canonical_gpt_5_6_sol_id(self):
         self.assertEqual(Settings().OPENAI_MODEL, "gpt-5.6-sol")
 
+    def test_openai_timeout_defaults_to_60_seconds(self):
+        self.assertEqual(Settings().OPENAI_TIMEOUT_SECONDS, 60.0)
+
     def test_default_allowlist_preserves_existing_reflect_pilot(self):
         self.assertEqual(Settings().LLM_ALLOWED_TOOLS, "reflect")
 
@@ -62,6 +65,7 @@ class OpenAIProviderTests(unittest.IsolatedAsyncioTestCase):
             captured["url"] = str(request.url)
             captured["authorization"] = request.headers.get("authorization")
             captured["payload"] = json.loads(request.content)
+            captured["timeout"] = request.extensions["timeout"]
             return httpx.Response(
                 200,
                 json={
@@ -86,6 +90,7 @@ class OpenAIProviderTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch.object(engine_module.settings, "OPENAI_API_KEY", "test-openai-key"),
                 patch.object(engine_module.settings, "OPENAI_MODEL", "gpt-5.6-sol"),
+                patch.object(engine_module.settings, "OPENAI_TIMEOUT_SECONDS", 125.0, create=True),
             ):
                 result = await engine._llm_generate_openai(
                     "You are the recovery engine.",
@@ -104,6 +109,7 @@ class OpenAIProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["input"], "Diagnose this witness.")
         self.assertEqual(payload["reasoning"], {"effort": "high"})
         self.assertEqual(payload["max_output_tokens"], 600)
+        self.assertEqual(captured["timeout"]["read"], 125.0)
 
     async def test_openai_provider_sends_strict_json_schema_for_recovery(self):
         captured: dict[str, object] = {}
