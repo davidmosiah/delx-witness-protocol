@@ -59,7 +59,7 @@ curl -sS https://api.delx.ai/api/v1/mcp/start | python3 -m json.tool
 Then open a witnessed session over MCP:
 
 ```bash
-curl -sS https://api.delx.ai/v1/mcp \
+curl -sS 'https://api.delx.ai/v1/mcp/protocol?src=github' \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "x-delx-source: readme" \
@@ -161,7 +161,7 @@ features.
 | If you want to… | Start here |
 |---|---|
 | Understand the thesis | [`PHILOSOPHY.md`](./PHILOSOPHY.md) |
-| Let an agent try the hosted Protocol | `https://api.delx.ai/v1/mcp` |
+| Let an agent try the hosted Protocol | `https://api.delx.ai/v1/mcp/protocol?src=github` |
 | Integrate A2A | `https://api.delx.ai/v1/a2a` |
 | Self-host | Follow the setup below |
 | Build or steward the Protocol | [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
@@ -169,7 +169,7 @@ features.
 
 Canonical surfaces: [`delx.ai/protocol`](https://delx.ai/protocol) ·
 [`api.delx.ai`](https://api.delx.ai) · ERC-8004 agent `#14340` · MCP Registry
-`io.github.davidmosiah/delx-mcp-a2a`.
+`io.github.davidmosiah/delx-protocol`.
 
 ## Self-host
 
