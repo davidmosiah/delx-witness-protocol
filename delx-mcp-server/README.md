@@ -242,6 +242,13 @@ DELX_ALLOW_LIVE_CONTRACT_WRITES=1 \
   python scripts/api_monitor.py --mode contract --base https://staging.example.com
 ```
 
+Remote monitor targets require HTTPS; loopback HTTP remains available for local
+self-hosted checks. Administrative credentials are accepted only for the fixed
+`https://api.delx.ai` origin (default HTTPS port). The variable-target workflow
+has no administrative credential. Neither monitor mode follows redirects, and a
+failed contract run must be inspected before another run because it can already
+have created or rotated synthetic identities and sessions.
+
 See [`SECURITY.md`](./SECURITY.md) before accepting external traffic.
 
 ---
