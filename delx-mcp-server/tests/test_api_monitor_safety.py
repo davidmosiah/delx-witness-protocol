@@ -55,7 +55,7 @@ class ApiMonitorSafetyTests(unittest.TestCase):
                 for identity in (False, True):
                     with self.subTest(code=code, location=location, identity=identity):
                         seen = []
-                        def transport(handler, request):
+                        def transport(handler, request, seen=seen, code=code, location=location):
                             seen.append(request)
                             if len(seen) == 1:
                                 return self.response(request, code, location=location)
@@ -72,7 +72,7 @@ class ApiMonitorSafetyTests(unittest.TestCase):
         for base, pin in (("https://api.delx.ai", CANARY), ("https://api.delx.ai:443/", CANARY), ("http://127.0.0.1:8005", ""), ("https://fixture.invalid/service/", "")):
             with self.subTest(base=base), patch.dict(os.environ, {"PROTOCOL_ADMIN_PIN": pin}, clear=True):
                 seen = []
-                def transport(handler, request):
+                def transport(handler, request, seen=seen):
                     seen.append(request)
                     return self.response(request)
                 with patch.object(urllib.request.HTTPSHandler, "https_open", transport), patch.object(urllib.request.HTTPHandler, "http_open", transport), contextlib.redirect_stdout(io.StringIO()):
@@ -112,7 +112,7 @@ class ApiMonitorSafetyTests(unittest.TestCase):
             for claimed_length in (None, "1"):
                 with self.subTest(code=code, claimed_length=claimed_length):
                     sizes = []
-                    def transport(handler, request):
+                    def transport(handler, request, code=code, claimed_length=claimed_length, sizes=sizes):
                         response = self.response(request, code, {"oversized": "x" * (api_monitor.MAX_RESPONSE_BYTES + 64)})
                         if claimed_length:
                             response.headers["Content-Length"] = claimed_length
