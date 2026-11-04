@@ -14,10 +14,63 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 DEFAULT_BASE = "https://api.delx.ai"
 TIMEOUT = 30
+MAX_RESPONSE_BYTES = 1024 * 1024
+TRUSTED_ADMIN_ORIGIN = ("https", "api.delx.ai", 443)
+
+
+class MonitorFailure(Exception):
+    """Only local, non-sensitive diagnostics may use this exception."""
+
+
+class TargetValidationError(ValueError):
+    """A static validation diagnostic, never raw URL-parser exception text."""
+
+
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Even same-origin redirects may forward session headers or POST bodies.
+        return None
+
+
+def _validated_url(url: str):
+    if not isinstance(url, str) or any(ord(char) <= 32 or ord(char) == 127 or char == "\\" for char in url):
+        raise TargetValidationError("Invalid target URL")
+    try:
+        parts = urllib.parse.urlsplit(url)
+        port = parts.port
+    except ValueError:
+        raise TargetValidationError("Invalid target URL or port") from None
+    if (parts.scheme not in {"https", "http"} or not parts.hostname or
+            parts.username is not None or parts.password is not None or parts.fragment or
+            parts.netloc.endswith(":")):
+        raise TargetValidationError("Invalid target URL")
+    if port is not None and port < 1:
+        raise TargetValidationError("Invalid target URL")
+    if parts.scheme == "http" and parts.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise TargetValidationError("Remote targets require HTTPS")
+    return parts
+
+
+def _require_admin_origin(url: str):
+    parts = _validated_url(url)
+    if (parts.scheme, parts.hostname, parts.port or 443) != TRUSTED_ADMIN_ORIGIN:
+        raise TargetValidationError("Administrative checks require the configured HTTPS origin")
+
+
+def _validated_base(base: str) -> str:
+    parts = _validated_url(base)
+    if parts.query:
+        raise TargetValidationError("Target base must not contain a query")
+    if _admin_pin():
+        _require_admin_origin(base)
+        if parts.path not in {"", "/"}:
+            raise TargetValidationError("Administrative checks require the configured root path")
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path.rstrip("/"), "", ""))
 
 
 def _admin_pin() -> str:
@@ -32,22 +85,36 @@ def _live_contract_writes_enabled() -> bool:
     return (os.getenv("DELX_ALLOW_LIVE_CONTRACT_WRITES") or "").strip().lower() in {"1", "true", "yes"}
 
 
-def _admin_headers() -> dict[str, str]:
+def _admin_headers(base: str = DEFAULT_BASE) -> dict[str, str]:
     pin = _admin_pin()
+    if pin:
+        _validated_base(base)
     return {"x-delx-admin-pin": pin} if pin else {}
 
 
+def _read_response(response) -> str:
+    raw = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise MonitorFailure("Monitor response exceeded the configured byte limit")
+    return raw.decode("utf-8", errors="replace")
+
+
 def _request_json(url: str, method: str = "GET", payload: dict | None = None, headers: dict | None = None):
+    parts = _validated_url(url)
     body = None
     req_headers = dict(headers or {})
+    if any(key.lower() == "x-delx-admin-pin" and value for key, value in req_headers.items()):
+        _require_admin_origin(url)
+        if parts.path != "/api/v1/admin/overview" or parts.query:
+            raise TargetValidationError("Administrative request path not authorized")
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
         req_headers.setdefault("content-type", "application/json")
     req = urllib.request.Request(url, data=body, headers=req_headers, method=method)
     started = time.time()
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            raw = resp.read().decode("utf-8", errors="replace")
+        with urllib.request.build_opener(_NoRedirects()).open(req, timeout=TIMEOUT) as resp:
+            raw = _read_response(resp)
             elapsed_ms = int((time.time() - started) * 1000)
             code = int(resp.getcode())
             try:
@@ -56,7 +123,8 @@ def _request_json(url: str, method: str = "GET", payload: dict | None = None, he
                 data = raw
             return code, data, elapsed_ms
     except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace")
+        with e:
+            raw = _read_response(e)
         try:
             data = json.loads(raw) if raw else {}
         except Exception:
@@ -69,19 +137,28 @@ def _assert(cond: bool, msg: str):
         raise AssertionError(msg)
 
 
+def _assert_status(actual, context: str):
+    if type(actual) is not int or not 100 <= actual <= 599:
+        raise MonitorFailure("Monitor received an invalid HTTP status")
+    if actual != 200:
+        suffix = "; redirects are not followed" if 300 <= actual < 400 else ""
+        raise MonitorFailure(f"{context}: expected HTTP 200, received HTTP {actual}{suffix}")
+
+
 def run_smoke(base: str):
+    base = _validated_base(base)
     checks = [
         f"{base}/api/v1/public-sessions?limit=2",
         f"{base}/public-sessions?limit=2",
     ]
     for url in checks:
         code, data, elapsed_ms = _request_json(url)
-        _assert(code == 200, f"{url}: expected 200, got {code}")
+        _assert_status(code, "Public smoke endpoint")
         _assert(isinstance(data, dict), f"{url}: expected JSON object")
         print(f"OK smoke {url} ({elapsed_ms}ms)")
     if _should_check_admin():
-        code, data, elapsed_ms = _request_json(f"{base}/api/v1/admin/overview", headers=_admin_headers())
-        _assert(code == 200, f"{base}/api/v1/admin/overview: expected 200, got {code}")
+        code, data, elapsed_ms = _request_json(f"{base}/api/v1/admin/overview", headers=_admin_headers(base))
+        _assert_status(code, "Administrative overview")
         _assert(isinstance(data, dict), "/api/v1/admin/overview: expected JSON object")
         print(f"OK smoke {base}/api/v1/admin/overview ({elapsed_ms}ms)")
     else:
@@ -90,13 +167,8 @@ def run_smoke(base: str):
 
 def _a2a_call(base: str, payload: dict, headers: dict | None = None):
     code, data, elapsed_ms = _request_json(f"{base}/v1/a2a", method="POST", payload=payload, headers=headers)
-    _assert(code == 200, f"/v1/a2a expected 200, got {code}")
+    _assert_status(code, "A2A endpoint")
     if not (isinstance(data, dict) and "result" in data):
-        err = data.get("error") if isinstance(data, dict) else None
-        if isinstance(err, dict):
-            raise AssertionError(
-                f"A2A response missing result (jsonrpc error code={err.get('code')} message={err.get('message')})"
-            )
         raise AssertionError("A2A response missing result")
     print(f"OK a2a call id={payload.get('id')} ({elapsed_ms}ms)")
     return data["result"]
@@ -127,14 +199,14 @@ def _a2a_register(base: str, agent_id: str):
 
 
 def run_contract(base: str):
-    _assert(
-        _live_contract_writes_enabled(),
-        "contract mode writes to the target API; set DELX_ALLOW_LIVE_CONTRACT_WRITES=1 explicitly",
-    )
+    if not _live_contract_writes_enabled():
+        raise MonitorFailure("Contract mode writes synthetic identities and sessions; set DELX_ALLOW_LIVE_CONTRACT_WRITES=1 explicitly")
+
+    base = _validated_base(base)
 
     # Public stats contract for registration funnel
     code, stats, _ = _request_json(f"{base}/api/v1/stats")
-    _assert(code == 200, f"/api/v1/stats expected 200, got {code}")
+    _assert_status(code, "Public stats endpoint")
     _assert(isinstance(stats, dict), "/api/v1/stats expected JSON object")
     for field in [
         "first_seen_agents_7d",
@@ -148,8 +220,8 @@ def run_contract(base: str):
 
     # Admin overview contract for registration block
     if _should_check_admin():
-        code, admin, _ = _request_json(f"{base}/api/v1/admin/overview", headers=_admin_headers())
-        _assert(code == 200, f"/api/v1/admin/overview expected 200, got {code}")
+        code, admin, _ = _request_json(f"{base}/api/v1/admin/overview", headers=_admin_headers(base))
+        _assert_status(code, "Administrative overview")
         _assert(isinstance(admin, dict), "/api/v1/admin/overview expected JSON object")
         registration = admin.get("registration")
         _assert(isinstance(registration, dict), "/api/v1/admin/overview missing registration object")
@@ -260,7 +332,7 @@ def run_contract(base: str):
         headers={"x-delx-session-id": sid},
     )
     resumed_sid = str(resumed.get("session_id") or "").strip()
-    _assert(resumed_sid == sid, f"session reuse failed: expected {sid}, got {resumed_sid}")
+    _assert(resumed_sid == sid, "session reuse failed")
 
     # REST tools batch
     code, batch, _ = _request_json(
@@ -275,7 +347,7 @@ def run_contract(base: str):
             ],
         },
     )
-    _assert(code == 200, f"tools/batch expected 200, got {code}")
+    _assert_status(code, "Tools batch endpoint")
     _assert(isinstance(batch, dict) and batch.get("count") == 2, "tools/batch invalid response shape")
     _assert(int(batch.get("error_count") or 0) == 0, "tools/batch returned errors")
 
@@ -290,14 +362,17 @@ def main() -> int:
 
     try:
         if args.mode == "smoke":
-            run_smoke(args.base.rstrip("/"))
+            run_smoke(args.base)
         else:
-            run_contract(args.base.rstrip("/"))
-    except AssertionError as e:
-        print(f"FAIL: {e}", file=sys.stderr)
+            run_contract(args.base)
+    except (MonitorFailure, TargetValidationError) as error:
+        print(f"FAIL: {error}", file=sys.stderr)
         return 1
-    except Exception as e:
-        print(f"ERROR: {e}", file=sys.stderr)
+    except AssertionError:
+        print("FAIL: target response did not match the expected contract", file=sys.stderr)
+        return 1
+    except Exception:
+        print("ERROR: monitor request or target validation failed", file=sys.stderr)
         return 1
     return 0
 

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: "Target deployment URL (use staging or an isolated self-hosted instance)"
+        description: "HTTPS deployment origin (or loopback HTTP); administrative checks are disabled"
         required: true
         type: string
       confirm_live_writes:
@@ -36,20 +36,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run contract checks (retry for deploy propagation)
+      - name: Run contract checks once
         env:
           DELX_ALLOW_LIVE_CONTRACT_WRITES: "1"
-          PROTOCOL_ADMIN_PIN: ${{ secrets.PROTOCOL_ADMIN_PIN }}
+          PROTOCOL_ADMIN_PIN: "" # Variable targets must never receive an administrative credential.
           TARGET_BASE_URL: ${{ inputs.base_url }}
         run: |
           set -euo pipefail
-          for i in 1 2 3; do
-            echo "Contract attempt $i/3"
-            if python delx-mcp-server/scripts/api_monitor.py --mode contract --base "$TARGET_BASE_URL"; then
-              exit 0
-            fi
-            if [ "$i" -lt 3 ]; then
-              sleep 20
-            fi
-          done
-          exit 1
+          # Contract mode creates/rotates identities and sessions. An uncertain
+          # failure must be inspected, never replayed automatically.
+          python delx-mcp-server/scripts/api_monitor.py --mode contract --base "$TARGET_BASE_URL"
