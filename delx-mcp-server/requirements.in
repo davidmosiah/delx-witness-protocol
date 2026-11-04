@@ -1,6 +1,6 @@
 # Direct runtime dependencies. Compile for Python 3.12 with:
 # uv pip compile requirements.in --python-version 3.12 --generate-hashes -o requirements.txt
-mcp==1.28.1
+mcp==1.30.0
 fastapi==0.139.0
 uvicorn[standard]==0.51.0
 pydantic==2.13.4
